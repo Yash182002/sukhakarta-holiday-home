@@ -24,6 +24,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <script
+  type="application/ld+json"
+  dangerouslySetInnerHTML={{
+    __html: JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Hotel",
+      name: "Sukhakarta Holiday Home",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Alibag",
+        addressRegion: "Maharashtra",
+        addressCountry: "IN"
+      },
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude: "18.6414",
+        longitude: "72.8722"
+      },
+      areaServed: "Alibag",
+      priceRange: "2000-3000",
+      url: "https://sukhakartaholidayhome.in"
+    })
+  }}
+/>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
