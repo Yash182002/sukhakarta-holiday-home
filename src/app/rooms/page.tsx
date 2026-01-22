@@ -3,22 +3,22 @@ import { supabase } from "@/lib/supabaseClient";
 export const metadata = {
   title: "Luxury Rooms in Alibag | Sukhakarta Holiday Home",
   description:
-    "Book luxury rooms at Sukhakarta Holiday Home, Alibag. Spacious rooms, peaceful nature, family-friendly stay with best prices.",
+    "Book luxury rooms at Sukhakarta Holiday Home in Alibag. Peaceful coastal stay near beaches, perfect for families and weekend getaways.",
   keywords: [
     "Sukhakarta Holiday Home",
     "Alibag cottage",
     "Luxury rooms Alibag",
+    "Stay near Alibag beach",
     "Family stay Alibag",
-    "Weekend getaway near Alibag"
+    "Weekend getaway Alibag"
   ],
   openGraph: {
-    title: "Luxury Rooms | Sukhakarta Holiday Home",
+    title: "Luxury Rooms in Alibag | Sukhakarta Holiday Home",
     description:
-      "Discover premium rooms surrounded by nature in Alibag. Book directly for best price.",
+      "Premium rooms near Alibag beaches. Book directly for best prices and peaceful coastal stay.",
     type: "website"
   }
 };
-
 
 export const revalidate = 0;
 
