@@ -1,5 +1,25 @@
 import { supabase } from "@/lib/supabaseClient";
 
+export const metadata = {
+  title: "Luxury Rooms in Alibag | Sukhakarta Holiday Home",
+  description:
+    "Book luxury rooms at Sukhakarta Holiday Home, Alibag. Spacious rooms, peaceful nature, family-friendly stay with best prices.",
+  keywords: [
+    "Sukhakarta Holiday Home",
+    "Alibag cottage",
+    "Luxury rooms Alibag",
+    "Family stay Alibag",
+    "Weekend getaway near Alibag"
+  ],
+  openGraph: {
+    title: "Luxury Rooms | Sukhakarta Holiday Home",
+    description:
+      "Discover premium rooms surrounded by nature in Alibag. Book directly for best price.",
+    type: "website"
+  }
+};
+
+
 export const revalidate = 0;
 
 export default async function RoomsPage() {
