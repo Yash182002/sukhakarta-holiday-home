@@ -16,6 +16,23 @@ type Room = {
   max_guests: number;
 };
 
+function getBlockedDates(bookings: any[]) {
+  const dates: string[] = [];
+
+  bookings.forEach(b => {
+    let d = new Date(b.check_in);
+    const end = new Date(b.check_out);
+
+    while (d < end) {
+      dates.push(d.toISOString().split("T")[0]);
+      d.setDate(d.getDate() + 1);
+    }
+  });
+
+  return dates;
+}
+
+
 export default function BookingPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
