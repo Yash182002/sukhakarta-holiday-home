@@ -12,23 +12,30 @@ declare global {
 type Room = {
   id: string;
   name: string;
-  max_guests: number;
   base_price: number;
+  max_guests: number;
 };
 
-export default function BookPage() {
-  const [checkIn, setCheckIn] = useState("");
-  const [checkOut, setCheckOut] = useState("");
-  const [guests, setGuests] = useState(1);
-
+export default function BookingPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    checkIn: "",
+    checkOut: "",
+    guests: 1,
+    specialRequests: "",
+  });
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  /* Load Razorpay script */
+  /* Load Razorpay */
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -38,21 +45,22 @@ export default function BookPage() {
 
   /* Fetch rooms */
   useEffect(() => {
-    supabase
-      .from("rooms")
-      .select("*")
-      .then(({ data }) => {
-        if (data) setRooms(data);
-      });
+    supabase.from("rooms").select("*").then(({ data }) => {
+      if (data) setRooms(data);
+    });
   }, []);
 
-  function getNights() {
-    const inDate = new Date(checkIn);
-    const outDate = new Date(checkOut);
+  function nights() {
+    if (!form.checkIn || !form.checkOut) return 0;
     return Math.ceil(
-      (outDate.getTime() - inDate.getTime()) /
+      (new Date(form.checkOut).getTime() -
+        new Date(form.checkIn).getTime()) /
         (1000 * 60 * 60 * 24)
     );
+  }
+
+  function totalAmount() {
+    return selectedRoom ? nights() * selectedRoom.base_price : 0;
   }
 
   async function checkAvailability() {
@@ -60,13 +68,8 @@ export default function BookPage() {
     setAvailableRooms([]);
     setSelectedRoom(null);
 
-    if (!checkIn || !checkOut) {
-      setMessage("Please select check-in and check-out dates.");
-      return;
-    }
-
-    if (new Date(checkOut) <= new Date(checkIn)) {
-      setMessage("Check-out date must be after check-in date.");
+    if (!form.checkIn || !form.checkOut) {
+      setMessage("Please select valid dates.");
       return;
     }
 
@@ -74,22 +77,20 @@ export default function BookPage() {
 
     const { data: bookings } = await supabase
       .from("bookings")
-      .select("*")
-      .lt("check_in", checkOut)
-      .gt("check_out", checkIn);
+      .select("room_id")
+      .lt("check_in", form.checkOut)
+      .gt("check_out", form.checkIn);
 
-    const bookedRoomIds = bookings?.map((b) => b.room_id) || [];
+    const bookedIds = bookings?.map(b => b.room_id) || [];
 
-    const freeRooms = rooms.filter(
-      (room) =>
-        !bookedRoomIds.includes(room.id) &&
-        guests <= room.max_guests
+    const free = rooms.filter(
+      r => !bookedIds.includes(r.id) && form.guests <= r.max_guests
     );
 
-    if (freeRooms.length === 0) {
+    if (free.length === 0) {
       setMessage("No rooms available for selected dates.");
     } else {
-      setAvailableRooms(freeRooms);
+      setAvailableRooms(free);
     }
 
     setLoading(false);
@@ -98,13 +99,10 @@ export default function BookPage() {
   async function startPayment() {
     if (!selectedRoom) return;
 
-    const nights = getNights();
-    const totalAmount = selectedRoom.base_price * nights;
-
     const res = await fetch("/api/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: totalAmount }),
+      body: JSON.stringify({ amount: totalAmount() }),
     });
 
     const order = await res.json();
@@ -114,129 +112,145 @@ export default function BookPage() {
       amount: order.amount,
       currency: "INR",
       name: "Sukhakarta Holiday Home",
-      description: "Full Booking Payment",
+      description: "Room Booking",
       order_id: order.id,
 
       handler: async function (response: any) {
-        /* VERIFY PAYMENT */
-        const verifyRes = await fetch("/api/verify-payment", {
+        const verify = await fetch("/api/verify-payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(response),
         });
 
-        const verifyData = await verifyRes.json();
+        const result = await verify.json();
+        if (!result.success) return alert("Payment verification failed");
 
-        if (!verifyData.success) {
-          alert("Payment verification failed");
-          return;
-        }
-
-        /* SAVE BOOKING */
         await supabase.from("bookings").insert({
           room_id: selectedRoom.id,
-          check_in: checkIn,
-          check_out: checkOut,
-          guests,
+          check_in: form.checkIn,
+          check_out: form.checkOut,
+          guests: form.guests,
+          customer_name: form.name,
+          phone: form.phone,
           status: "confirmed",
         });
 
-        window.location.href = "/booking-confirmed";
+        setShowSuccess(true);
       },
 
-      theme: {
-        color: "#000000",
-      },
+      theme: { color: "#f97316" },
     };
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+    new window.Razorpay(options).open();
   }
 
   return (
-    <main className="max-w-xl mx-auto px-6 py-16">
-      <h1 className="text-3xl font-bold mb-6">Book Your Stay</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
 
-      <div className="space-y-4">
-        <div>
-          <label className="block mb-1">Check-in</label>
-          <input
-            type="date"
-            className="w-full border p-2 rounded"
-            value={checkIn}
-            onChange={(e) => setCheckIn(e.target.value)}
-          />
-        </div>
+      {/* HERO */}
+      <section className="py-24 text-center">
+        <h1 className="text-5xl font-bold bg-gradient-to-r from-white to-orange-400 bg-clip-text text-transparent">
+          Book Your Stay in Alibag
+        </h1>
+        <p className="mt-4 text-slate-300">
+          Luxury rooms at Sukhakarta Holiday Home
+        </p>
+      </section>
 
-        <div>
-          <label className="block mb-1">Check-out</label>
-          <input
-            type="date"
-            className="w-full border p-2 rounded"
-            value={checkOut}
-            onChange={(e) => setCheckOut(e.target.value)}
-          />
-        </div>
+      <div className="max-w-6xl mx-auto px-6 pb-24 grid md:grid-cols-2 gap-10">
 
-        <div>
-          <label className="block mb-1">Guests</label>
-          <input
-            type="number"
-            min={1}
-            max={11}
-            className="w-full border p-2 rounded"
-            value={guests}
-            onChange={(e) => setGuests(Number(e.target.value))}
-          />
-        </div>
+        {/* FORM */}
+        <div className="bg-white/5 backdrop-blur-xl border border-orange-500/20 rounded-2xl p-8">
+          <h2 className="text-2xl font-semibold mb-6 text-orange-400">
+            Reservation Details
+          </h2>
 
-        <button
-          onClick={checkAvailability}
-          disabled={loading}
-          className="w-full bg-black text-white py-3 rounded"
-        >
-          {loading ? "Checking..." : "Check Availability"}
-        </button>
+          <input placeholder="Full Name" className="input" onChange={e => setForm({ ...form, name: e.target.value })} />
+          <input placeholder="Email" className="input" onChange={e => setForm({ ...form, email: e.target.value })} />
+          <input placeholder="Phone" className="input" onChange={e => setForm({ ...form, phone: e.target.value })} />
 
-        {message && (
-          <div className="p-3 border rounded bg-red-50 text-red-700">
-            {message}
+          <div className="grid grid-cols-2 gap-4">
+            <input type="date" className="input" onChange={e => setForm({ ...form, checkIn: e.target.value })} />
+            <input type="date" className="input" onChange={e => setForm({ ...form, checkOut: e.target.value })} />
           </div>
-        )}
 
-        {availableRooms.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold mt-6">
-              Available Rooms
-            </h2>
+          <input type="number" min={1} className="input" value={form.guests}
+            onChange={e => setForm({ ...form, guests: Number(e.target.value) })} />
 
-            {availableRooms.map((room) => (
-              <div
-                key={room.id}
-                className={`p-4 border rounded cursor-pointer ${
-                  selectedRoom?.id === room.id
-                    ? "border-black bg-gray-100"
-                    : ""
-                }`}
-                onClick={() => setSelectedRoom(room)}
-              >
-                <strong>{room.name}</strong>
-                <div>₹{room.base_price} / night</div>
-                <div>Max Guests: {room.max_guests}</div>
-              </div>
-            ))}
-          </div>
-        )}
+          <textarea placeholder="Special requests" className="input" rows={3}
+            onChange={e => setForm({ ...form, specialRequests: e.target.value })} />
 
-        {selectedRoom && (
           <button
-            onClick={startPayment}
-            className="w-full mt-6 bg-green-600 text-white py-3 rounded"
+            onClick={checkAvailability}
+            disabled={loading}
+            className="w-full mt-4 py-3 rounded bg-orange-500 hover:bg-orange-600 transition"
           >
-            Pay
+            {loading ? "Checking..." : "Check Availability"}
           </button>
-        )}
+
+          {message && <p className="mt-3 text-red-400">{message}</p>}
+        </div>
+
+        {/* SUMMARY */}
+        <div className="bg-white/5 backdrop-blur-xl border border-orange-500/20 rounded-2xl p-8">
+          <h2 className="text-xl font-semibold mb-4">Available Rooms</h2>
+
+          {availableRooms.map(room => (
+            <div
+              key={room.id}
+              onClick={() => setSelectedRoom(room)}
+              className={`p-4 rounded border cursor-pointer mb-3 ${
+                selectedRoom?.id === room.id
+                  ? "border-orange-500 bg-orange-500/10"
+                  : "border-white/10"
+              }`}
+            >
+              <strong>{room.name}</strong>
+              <div>₹{room.base_price} / night</div>
+              <div>Max Guests: {room.max_guests}</div>
+            </div>
+          ))}
+
+          {selectedRoom && (
+            <>
+              <div className="mt-4">
+                <div>Nights: {nights()}</div>
+                <div className="text-xl font-bold text-orange-400">
+                  Total: ₹{totalAmount()}
+                </div>
+              </div>
+
+              <button
+                onClick={startPayment}
+                className="w-full mt-6 py-3 rounded bg-green-600 hover:bg-green-700 transition"
+              >
+                Pay & Confirm Booking
+              </button>
+            </>
+          )}
+        </div>
       </div>
-    </main>
+
+      {showSuccess && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
+          <div className="bg-white text-black p-10 rounded-xl text-center">
+            <h3 className="text-2xl font-bold text-green-600">Booking Confirmed</h3>
+            <p className="mt-2">We will contact you shortly.</p>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .input {
+          width: 100%;
+          padding: 0.75rem;
+          margin-bottom: 0.75rem;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(249,115,22,0.3);
+          color: white;
+        }
+      `}</style>
+    </div>
   );
 }
