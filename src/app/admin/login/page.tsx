@@ -40,12 +40,9 @@ export default function AdminLoginPage() {
       </div>
 
       {/* Login Card */}
-      <div className="relative w-full max-w-md mx-auto p-8 rounded-3xl 
-        bg-white/5 backdrop-blur-xl border border-orange-500/20 shadow-2xl">
+      <div className="relative w-full max-w-md mx-auto p-8 rounded-3xl bg-white/5 backdrop-blur-xl border border-orange-500/20 shadow-2xl">
 
-        <h1 className="text-3xl font-bold text-center mb-2 
-          bg-gradient-to-r from-white via-orange-400 to-yellow-400 
-          bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-white via-orange-400 to-yellow-400 bg-clip-text text-transparent">
           Admin Access
         </h1>
 
@@ -88,22 +85,17 @@ export default function AdminLoginPage() {
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full mt-6 py-3 rounded-full 
-            bg-orange-500 hover:bg-orange-600 
-            transition-transform duration-300 
-            hover:-translate-y-0.5 
-            disabled:opacity-60"
+          className="w-full mt-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-60"
         >
           {loading ? "Authenticating…" : "Login"}
         </button>
 
-        {/* Footer */}
         <p className="mt-6 text-xs text-center text-slate-500">
           Authorized personnel only
         </p>
       </div>
 
-      {/* Animations */}
+      {/* Styles */}
       <style jsx>{`
         @keyframes gridMove {
           from { transform: translate(0,0); }
@@ -134,4 +126,3 @@ export default function AdminLoginPage() {
     </main>
   );
 }
-
