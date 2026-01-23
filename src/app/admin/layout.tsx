@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -10,49 +9,50 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const [loading, setLoading] = useState(true);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [password, setPassword] = useState("");
+  const [authorized, setAuthorized] = useState(false);
 
-  useEffect(() => {
-    // Allow login page without protection
-    if (pathname === "/admin/login") {
-      setLoading(false);
-      return;
-    }
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session) {
-        router.replace("/admin/login");
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      if (!profile || profile.role !== "admin") {
-        router.replace("/");
-        return;
-      }
-
-      setSessionChecked(true);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, pathname]);
-
-  if (loading && !sessionChecked) {
+  if (!authorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-        Verifying admin access…
+        <div className="bg-white/5 p-8 rounded-xl w-full max-w-sm">
+          <h2 className="text-xl font-semibold mb-4">Admin Access</h2>
+
+          <input
+            type="password"
+            placeholder="Admin password"
+            className="input"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+
+          <button
+            onClick={() => {
+              if (
+                password ===
+                process.env.NEXT_PUBLIC_ADMIN_PASSWORD
+              ) {
+                setAuthorized(true);
+              } else {
+                alert("Incorrect password");
+              }
+            }}
+            className="mt-4 w-full py-3 rounded bg-orange-500"
+          >
+            Enter
+          </button>
+
+          <style jsx>{`
+            .input {
+              width: 100%;
+              padding: 0.75rem;
+              border-radius: 10px;
+              background: rgba(255,255,255,0.1);
+              border: 1px solid rgba(249,115,22,0.3);
+              color: white;
+            }
+          `}</style>
+        </div>
       </div>
     );
   }
