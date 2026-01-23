@@ -99,10 +99,14 @@ export default function BookingPage() {
   async function startPayment() {
     if (!selectedRoom) return;
 
+    const nightsCount = nights();
+    const totalAmountValue = nightsCount * selectedRoom.base_price;
+    const advanceAmount = Math.min(1000, totalAmountValue);
+
     const res = await fetch("/api/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: totalAmount() }),
+      body: JSON.stringify({ amount: advanceAmount }),
     });
 
     const order = await res.json();
@@ -112,28 +116,28 @@ export default function BookingPage() {
       amount: order.amount,
       currency: "INR",
       name: "Sukhakarta Holiday Home",
-      description: "Room Booking",
+      description: "Room Booking Advance",
       order_id: order.id,
 
-      handler: async function (response: any) {
-        const verify = await fetch("/api/verify-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(response),
-        });
-
-        const result = await verify.json();
-        if (!result.success) return alert("Payment verification failed");
-
-        await supabase.from("bookings").insert({
+      handler: async function () {
+        const { error } = await supabase.from("bookings").insert({
           room_id: selectedRoom.id,
           check_in: form.checkIn,
           check_out: form.checkOut,
           guests: form.guests,
           customer_name: form.name,
+          email: form.email,
           phone: form.phone,
           status: "confirmed",
+          total_amount: totalAmountValue,
+          advance_amount: advanceAmount,
         });
+
+        if (error) {
+          console.error(error);
+          alert(error.message);
+          return;
+        }
 
         setShowSuccess(true);
       },
@@ -165,9 +169,9 @@ export default function BookingPage() {
             Reservation Details
           </h2>
 
-          <input placeholder="Full Name" className="input" onChange={e => setForm({ ...form, name: e.target.value })} />
-          <input placeholder="Email" className="input" onChange={e => setForm({ ...form, email: e.target.value })} />
-          <input placeholder="Phone" className="input" onChange={e => setForm({ ...form, phone: e.target.value })} />
+          <input className="input" placeholder="Full Name" onChange={e => setForm({ ...form, name: e.target.value })} />
+          <input className="input" placeholder="Email" onChange={e => setForm({ ...form, email: e.target.value })} />
+          <input className="input" placeholder="Phone" onChange={e => setForm({ ...form, phone: e.target.value })} />
 
           <div className="grid grid-cols-2 gap-4">
             <input type="date" className="input" onChange={e => setForm({ ...form, checkIn: e.target.value })} />
@@ -177,13 +181,10 @@ export default function BookingPage() {
           <input type="number" min={1} className="input" value={form.guests}
             onChange={e => setForm({ ...form, guests: Number(e.target.value) })} />
 
-          <textarea placeholder="Special requests" className="input" rows={3}
-            onChange={e => setForm({ ...form, specialRequests: e.target.value })} />
-
           <button
             onClick={checkAvailability}
             disabled={loading}
-            className="w-full mt-4 py-3 rounded bg-orange-500 hover:bg-orange-600 transition"
+            className="w-full mt-4 py-3 rounded bg-orange-500 hover:bg-orange-600"
           >
             {loading ? "Checking..." : "Check Availability"}
           </button>
@@ -218,13 +219,16 @@ export default function BookingPage() {
                 <div className="text-xl font-bold text-orange-400">
                   Total: ₹{totalAmount()}
                 </div>
+                <div className="text-sm text-slate-300">
+                  Advance payable now: ₹{Math.min(1000, totalAmount())}
+                </div>
               </div>
 
               <button
                 onClick={startPayment}
-                className="w-full mt-6 py-3 rounded bg-green-600 hover:bg-green-700 transition"
+                className="w-full mt-6 py-3 rounded bg-green-600 hover:bg-green-700"
               >
-                Pay & Confirm Booking
+                Pay Advance & Confirm
               </button>
             </>
           )}
