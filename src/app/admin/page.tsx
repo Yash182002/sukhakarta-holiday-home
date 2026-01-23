@@ -40,6 +40,10 @@ export default function AdminDashboard() {
     if (data) setBookings(data);
     setLoading(false);
   }
+    async function logout() {
+    await supabase.auth.signOut();
+    window.location.href = "/admin/login";
+  }
 
   /* ---------------- APPROVE / CANCEL ---------------- */
 
@@ -118,19 +122,28 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex gap-4">
-          <Link
-            href="/admin/block-dates"
-            className="px-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 transition"
-          >
-            Block Dates
-          </Link>
-          <Link
-            href="/"
-            className="px-6 py-3 rounded-full border border-orange-500 hover:bg-orange-500 transition"
-          >
-            View Website
-          </Link>
-        </div>
+  <Link
+    href="/admin/block-dates"
+    className="px-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 transition"
+  >
+    Block Dates
+  </Link>
+
+  <Link
+    href="/"
+    className="px-6 py-3 rounded-full border border-orange-500 hover:bg-orange-500 transition"
+  >
+    View Website
+  </Link>
+
+  <button
+    onClick={logout}
+    className="px-6 py-3 rounded-full bg-red-600 hover:bg-red-700 transition"
+  >
+    Logout
+  </button>
+</div>
+
       </header>
 
       {/* STATS */}
