@@ -9,6 +9,8 @@ declare global {
   }
 }
 
+/* ---------------- TYPES ---------------- */
+
 type Room = {
   id: string;
   name: string;
@@ -16,7 +18,14 @@ type Room = {
   max_guests: number;
 };
 
-function getBlockedDates(bookings: any[]) {
+type BookingDate = {
+  check_in: string;
+  check_out: string;
+};
+
+/* ---------------- UTIL ---------------- */
+
+function getBlockedDates(bookings: BookingDate[]) {
   const dates: string[] = [];
 
   bookings.forEach(b => {
@@ -32,11 +41,14 @@ function getBlockedDates(bookings: any[]) {
   return dates;
 }
 
+/* ---------------- PAGE ---------------- */
 
 export default function BookingPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     name: "",
@@ -45,14 +57,14 @@ export default function BookingPage() {
     checkIn: "",
     checkOut: "",
     guests: 1,
-    specialRequests: "",
   });
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  /* Load Razorpay */
+  /* ---------------- LOAD RAZORPAY ---------------- */
+
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -60,12 +72,29 @@ export default function BookingPage() {
     document.body.appendChild(script);
   }, []);
 
-  /* Fetch rooms */
+  /* ---------------- FETCH ROOMS ---------------- */
+
   useEffect(() => {
     supabase.from("rooms").select("*").then(({ data }) => {
       if (data) setRooms(data);
     });
   }, []);
+
+  /* ---------------- FETCH BLOCKED DATES ---------------- */
+
+  useEffect(() => {
+    supabase
+      .from("bookings")
+      .select("check_in, check_out")
+      .eq("status", "confirmed")
+      .then(({ data }) => {
+        if (data) {
+          setBlockedDates(getBlockedDates(data));
+        }
+      });
+  }, []);
+
+  /* ---------------- HELPERS ---------------- */
 
   function nights() {
     if (!form.checkIn || !form.checkOut) return 0;
@@ -80,13 +109,25 @@ export default function BookingPage() {
     return selectedRoom ? nights() * selectedRoom.base_price : 0;
   }
 
+  /* ---------------- AVAILABILITY ---------------- */
+
   async function checkAvailability() {
     setMessage("");
     setAvailableRooms([]);
     setSelectedRoom(null);
 
     if (!form.checkIn || !form.checkOut) {
-      setMessage("Please select valid dates.");
+      setMessage("Please select check-in and check-out dates.");
+      return;
+    }
+
+    if (blockedDates.includes(form.checkIn)) {
+      setMessage("Selected check-in date is unavailable.");
+      return;
+    }
+
+    if (new Date(form.checkOut) <= new Date(form.checkIn)) {
+      setMessage("Check-out must be after check-in.");
       return;
     }
 
@@ -100,18 +141,20 @@ export default function BookingPage() {
 
     const bookedIds = bookings?.map(b => b.room_id) || [];
 
-    const free = rooms.filter(
+    const freeRooms = rooms.filter(
       r => !bookedIds.includes(r.id) && form.guests <= r.max_guests
     );
 
-    if (free.length === 0) {
+    if (freeRooms.length === 0) {
       setMessage("No rooms available for selected dates.");
     } else {
-      setAvailableRooms(free);
+      setAvailableRooms(freeRooms);
     }
 
     setLoading(false);
   }
+
+  /* ---------------- PAYMENT + INSERT ---------------- */
 
   async function startPayment() {
     if (!selectedRoom) return;
@@ -133,7 +176,7 @@ export default function BookingPage() {
       amount: order.amount,
       currency: "INR",
       name: "Sukhakarta Holiday Home",
-      description: "Room Booking Advance",
+      description: "Booking Advance",
       order_id: order.id,
 
       handler: async function () {
@@ -165,16 +208,17 @@ export default function BookingPage() {
     new window.Razorpay(options).open();
   }
 
+  /* ---------------- UI ---------------- */
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
 
-      {/* HERO */}
       <section className="py-24 text-center">
         <h1 className="text-5xl font-bold bg-gradient-to-r from-white to-orange-400 bg-clip-text text-transparent">
           Book Your Stay in Alibag
         </h1>
         <p className="mt-4 text-slate-300">
-          Luxury rooms at Sukhakarta Holiday Home
+          Sukhakarta Holiday Home
         </p>
       </section>
 
@@ -186,16 +230,24 @@ export default function BookingPage() {
             Reservation Details
           </h2>
 
-          <input className="input" placeholder="Full Name" onChange={e => setForm({ ...form, name: e.target.value })} />
-          <input className="input" placeholder="Email" onChange={e => setForm({ ...form, email: e.target.value })} />
-          <input className="input" placeholder="Phone" onChange={e => setForm({ ...form, phone: e.target.value })} />
+          <input className="input" placeholder="Full Name"
+            onChange={e => setForm({ ...form, name: e.target.value })} />
+
+          <input className="input" placeholder="Email"
+            onChange={e => setForm({ ...form, email: e.target.value })} />
+
+          <input className="input" placeholder="Phone"
+            onChange={e => setForm({ ...form, phone: e.target.value })} />
 
           <div className="grid grid-cols-2 gap-4">
-            <input type="date" className="input" onChange={e => setForm({ ...form, checkIn: e.target.value })} />
-            <input type="date" className="input" onChange={e => setForm({ ...form, checkOut: e.target.value })} />
+            <input type="date" className="input"
+              onChange={e => setForm({ ...form, checkIn: e.target.value })} />
+            <input type="date" className="input"
+              onChange={e => setForm({ ...form, checkOut: e.target.value })} />
           </div>
 
-          <input type="number" min={1} className="input" value={form.guests}
+          <input type="number" min={1} className="input"
+            value={form.guests}
             onChange={e => setForm({ ...form, guests: Number(e.target.value) })} />
 
           <button
@@ -255,7 +307,9 @@ export default function BookingPage() {
       {showSuccess && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
           <div className="bg-white text-black p-10 rounded-xl text-center">
-            <h3 className="text-2xl font-bold text-green-600">Booking Confirmed</h3>
+            <h3 className="text-2xl font-bold text-green-600">
+              Booking Confirmed
+            </h3>
             <p className="mt-2">We will contact you shortly.</p>
           </div>
         </div>
