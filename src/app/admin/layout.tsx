@@ -12,48 +12,44 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [loading, setLoading] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
-    async function checkAdmin() {
-      // Allow login page
-      if (pathname === "/admin/login") {
-        setLoading(false);
-        return;
-      }
+    // Allow login page without protection
+    if (pathname === "/admin/login") {
+      setLoading(false);
+      return;
+    }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session) {
         router.replace("/admin/login");
         return;
       }
 
-      const { data: profile, error } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", session.user.id)
         .maybeSingle();
 
-      if (error || !profile) {
-        console.error("Profile missing or error:", error);
-        router.replace("/admin/login");
-        return;
-      }
-
-      if (profile.role !== "admin") {
+      if (!profile || profile.role !== "admin") {
         router.replace("/");
         return;
       }
 
+      setSessionChecked(true);
       setLoading(false);
-    }
+    });
 
-    checkAdmin();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router, pathname]);
 
-  if (loading) {
+  if (loading && !sessionChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
         Verifying admin access…
