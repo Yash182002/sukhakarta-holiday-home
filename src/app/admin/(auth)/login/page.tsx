@@ -30,7 +30,7 @@ export default function AdminLoginPage() {
 
     await supabase.auth.getSession();
 router.replace("/admin");
-
+  }
 
   return (
     <main className="min-h-screen relative flex items-center justify-center bg-slate-950 overflow-hidden text-white">
