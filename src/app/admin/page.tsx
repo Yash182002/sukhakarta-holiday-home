@@ -12,7 +12,7 @@ type Booking = {
   check_in: string;
   check_out: string;
   guests: number;
-  status: string;
+  status: "pending" | "confirmed" | "cancelled";
   total_amount: number;
   created_at: string;
 };
@@ -20,22 +20,50 @@ type Booking = {
 export default function AdminDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase
-      .from("bookings")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setBookings(data);
-        setLoading(false);
-      });
+    loadBookings();
   }, []);
 
-  const totalRevenue = bookings.reduce(
-    (sum, b) => sum + (b.total_amount || 0),
-    0
-  );
+  async function loadBookings() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (data) setBookings(data);
+    setLoading(false);
+  }
+
+  async function updateStatus(
+    bookingId: string,
+    status: "confirmed" | "cancelled"
+  ) {
+    setActionLoading(bookingId);
+
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status })
+      .eq("id", bookingId);
+
+    if (!error) {
+      setBookings(prev =>
+        prev.map(b =>
+          b.id === bookingId ? { ...b, status } : b
+        )
+      );
+    } else {
+      alert(error.message);
+    }
+
+    setActionLoading(null);
+  }
+
+  const totalRevenue = bookings
+    .filter(b => b.status === "confirmed")
+    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
   const confirmedCount = bookings.filter(
     b => b.status === "confirmed"
@@ -62,7 +90,6 @@ export default function AdminDashboard() {
           >
             Block Dates
           </Link>
-
           <Link
             href="/"
             className="px-6 py-3 rounded-full border border-orange-500 hover:bg-orange-500 transition"
@@ -74,21 +101,9 @@ export default function AdminDashboard() {
 
       {/* STATS */}
       <section className="max-w-7xl mx-auto grid md:grid-cols-3 gap-6 mb-12">
-        <StatCard
-          title="Total Bookings"
-          value={bookings.length}
-          accent="orange"
-        />
-        <StatCard
-          title="Confirmed Bookings"
-          value={confirmedCount}
-          accent="green"
-        />
-        <StatCard
-          title="Total Revenue"
-          value={`₹${totalRevenue}`}
-          accent="yellow"
-        />
+        <StatCard title="Total Bookings" value={bookings.length} accent="orange" />
+        <StatCard title="Confirmed Bookings" value={confirmedCount} accent="green" />
+        <StatCard title="Total Revenue" value={`₹${totalRevenue}`} accent="yellow" />
       </section>
 
       {/* BOOKINGS LIST */}
@@ -111,7 +126,9 @@ export default function AdminDashboard() {
               key={b.id}
               className="bg-white/5 backdrop-blur-xl border border-orange-500/20 rounded-2xl p-6 transition-transform hover:-translate-y-1"
             >
-              <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+              <div className="flex flex-col lg:flex-row lg:justify-between gap-6">
+
+                {/* LEFT */}
                 <div>
                   <h3 className="text-xl font-semibold text-orange-400">
                     {b.customer_name}
@@ -124,12 +141,43 @@ export default function AdminDashboard() {
                   </p>
                 </div>
 
+                {/* RIGHT */}
                 <div className="text-right">
                   <p className="text-lg font-bold">
                     ₹{b.total_amount}
                   </p>
+
                   <StatusBadge status={b.status} />
-                  <p className="text-xs text-slate-400 mt-1">
+
+                  <div className="mt-4 flex gap-2 justify-end">
+                    <button
+                      disabled={b.status !== "pending" || actionLoading === b.id}
+                      onClick={() => updateStatus(b.id, "confirmed")}
+                      className={`px-4 py-2 rounded text-sm font-semibold transition
+                        ${
+                          b.status === "pending"
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "bg-green-600/30 cursor-not-allowed"
+                        }`}
+                    >
+                      Approve
+                    </button>
+
+                    <button
+                      disabled={b.status === "cancelled" || actionLoading === b.id}
+                      onClick={() => updateStatus(b.id, "cancelled")}
+                      className={`px-4 py-2 rounded text-sm font-semibold transition
+                        ${
+                          b.status !== "cancelled"
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "bg-red-600/30 cursor-not-allowed"
+                        }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-400 mt-2">
                     {new Date(b.created_at).toLocaleString()}
                   </p>
                 </div>
@@ -153,7 +201,7 @@ function StatCard({
   value: string | number;
   accent: "orange" | "green" | "yellow";
 }) {
-  const colors = {
+  const styles = {
     orange: "from-orange-500/20 to-orange-400/5 border-orange-500/30",
     green: "from-green-500/20 to-green-400/5 border-green-500/30",
     yellow: "from-yellow-500/20 to-yellow-400/5 border-yellow-500/30",
@@ -161,7 +209,7 @@ function StatCard({
 
   return (
     <div
-      className={`bg-gradient-to-br ${colors[accent]} border rounded-2xl p-6 backdrop-blur-xl`}
+      className={`bg-gradient-to-br ${styles[accent]} border rounded-2xl p-6 backdrop-blur-xl`}
     >
       <p className="text-slate-400 text-sm">{title}</p>
       <p className="text-3xl font-bold mt-2">{value}</p>
