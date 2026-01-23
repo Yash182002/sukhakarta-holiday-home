@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
+/* ---------------- TYPES ---------------- */
+
 type Booking = {
   id: string;
   customer_name: string;
@@ -16,6 +18,8 @@ type Booking = {
   total_amount: number;
   created_at: string;
 };
+
+/* ---------------- PAGE ---------------- */
 
 export default function AdminDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -37,37 +41,67 @@ export default function AdminDashboard() {
     setLoading(false);
   }
 
+  /* ---------------- APPROVE / CANCEL ---------------- */
+
   async function updateStatus(
-    bookingId: string,
+    booking: Booking,
     status: "confirmed" | "cancelled"
   ) {
-    setActionLoading(bookingId);
+    setActionLoading(booking.id);
 
     const { error } = await supabase
       .from("bookings")
       .update({ status })
-      .eq("id", bookingId);
+      .eq("id", booking.id);
 
-    if (!error) {
-      setBookings(prev =>
-        prev.map(b =>
-          b.id === bookingId ? { ...b, status } : b
-        )
-      );
-    } else {
+    if (error) {
       alert(error.message);
+      setActionLoading(null);
+      return;
     }
+
+    /* 🔔 AUTO WHATSAPP + EMAIL */
+    const res = await fetch("/api/notify-booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer_name: booking.customer_name,
+        phone: booking.phone,
+        email: booking.email,
+        check_in: booking.check_in,
+        check_out: booking.check_out,
+        total_amount: booking.total_amount,
+        status,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data?.whatsappUrl) {
+      window.open(data.whatsappUrl, "_blank");
+    }
+
+    /* UI UPDATE */
+    setBookings(prev =>
+      prev.map(b =>
+        b.id === booking.id ? { ...b, status } : b
+      )
+    );
 
     setActionLoading(null);
   }
+
+  /* ---------------- STATS ---------------- */
+
+  const confirmedCount = bookings.filter(
+    b => b.status === "confirmed"
+  ).length;
 
   const totalRevenue = bookings
     .filter(b => b.status === "confirmed")
     .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
-  const confirmedCount = bookings.filter(
-    b => b.status === "confirmed"
-  ).length;
+  /* ---------------- UI ---------------- */
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white px-6 py-10">
@@ -86,7 +120,7 @@ export default function AdminDashboard() {
         <div className="flex gap-4">
           <Link
             href="/admin/block-dates"
-            className="px-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 transition-transform hover:-translate-y-1"
+            className="px-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 transition"
           >
             Block Dates
           </Link>
@@ -106,7 +140,7 @@ export default function AdminDashboard() {
         <StatCard title="Total Revenue" value={`₹${totalRevenue}`} accent="yellow" />
       </section>
 
-      {/* BOOKINGS LIST */}
+      {/* BOOKINGS */}
       <section className="max-w-7xl mx-auto">
         <h2 className="text-2xl font-semibold mb-6">
           Recent Bookings
@@ -152,26 +186,24 @@ export default function AdminDashboard() {
                   <div className="mt-4 flex gap-2 justify-end">
                     <button
                       disabled={b.status !== "pending" || actionLoading === b.id}
-                      onClick={() => updateStatus(b.id, "confirmed")}
-                      className={`px-4 py-2 rounded text-sm font-semibold transition
-                        ${
-                          b.status === "pending"
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-green-600/30 cursor-not-allowed"
-                        }`}
+                      onClick={() => updateStatus(b, "confirmed")}
+                      className={`px-4 py-2 rounded text-sm font-semibold ${
+                        b.status === "pending"
+                          ? "bg-green-600 hover:bg-green-700"
+                          : "bg-green-600/30 cursor-not-allowed"
+                      }`}
                     >
                       Approve
                     </button>
 
                     <button
                       disabled={b.status === "cancelled" || actionLoading === b.id}
-                      onClick={() => updateStatus(b.id, "cancelled")}
-                      className={`px-4 py-2 rounded text-sm font-semibold transition
-                        ${
-                          b.status !== "cancelled"
-                            ? "bg-red-600 hover:bg-red-700"
-                            : "bg-red-600/30 cursor-not-allowed"
-                        }`}
+                      onClick={() => updateStatus(b, "cancelled")}
+                      className={`px-4 py-2 rounded text-sm font-semibold ${
+                        b.status !== "cancelled"
+                          ? "bg-red-600 hover:bg-red-700"
+                          : "bg-red-600/30 cursor-not-allowed"
+                      }`}
                     >
                       Cancel
                     </button>
