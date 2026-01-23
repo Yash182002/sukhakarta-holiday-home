@@ -94,6 +94,22 @@ export default function BookingPage() {
       });
   }, []);
 
+/* ---------------- STOP OVERBOOKING ---------------- */
+  
+  useEffect(() => {
+  supabase
+    .from("blocked_dates")
+    .select("date")
+    .then(({ data }) => {
+      if (data) {
+        setBlockedDates(prev => [
+          ...new Set([...prev, ...data.map(d => d.date)]),
+        ]);
+      }
+    });
+}, []);
+
+  
   /* ---------------- HELPERS ---------------- */
 
   function nights() {
