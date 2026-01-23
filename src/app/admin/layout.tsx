@@ -15,7 +15,7 @@ export default function AdminLayout({
 
   useEffect(() => {
     async function checkAdmin() {
-      // 🔓 Allow login page without checks
+      // Allow login page
       if (pathname === "/admin/login") {
         setLoading(false);
         return;
@@ -30,13 +30,19 @@ export default function AdminLayout({
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
-      if (profile?.role !== "admin") {
+      if (error || !profile) {
+        console.error("Profile missing or error:", error);
+        router.replace("/admin/login");
+        return;
+      }
+
+      if (profile.role !== "admin") {
         router.replace("/");
         return;
       }
