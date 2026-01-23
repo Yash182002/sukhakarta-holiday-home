@@ -2,22 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function checkAdmin() {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 🔓 Allow login page without checks
+      if (pathname === "/admin/login") {
+        setLoading(false);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (!session) {
-        router.push("/admin/login");
+        router.replace("/admin/login");
         return;
       }
 
@@ -28,7 +37,7 @@ export default function AdminLayout({
         .single();
 
       if (profile?.role !== "admin") {
-        router.push("/");
+        router.replace("/");
         return;
       }
 
@@ -36,7 +45,7 @@ export default function AdminLayout({
     }
 
     checkAdmin();
-  }, [router]);
+  }, [router, pathname]);
 
   if (loading) {
     return (
