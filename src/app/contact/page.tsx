@@ -37,7 +37,7 @@ export default function ContactPage() {
       title: "Email",
       details: "info@sukhakarta.com",
       subtext: "Response within 24 hours",
-      action: "mailto:info@sukhakarta.com",
+      action: "mailto:sukhakartaholidayhome.com",
       color: "#f97316"
     },
     {
@@ -195,7 +195,7 @@ ${formData.message}`;
                 name="message"
                 value={formData.message}
                 onChange={handleChange}
-                rows="6"
+                rows={6}
                 placeholder="Tell us how we can help you..."
               />
             </div>
