@@ -253,6 +253,22 @@ export default function AboutPage() {
           overflow-x: hidden;
         }
 
+        .scroll-indicator {
+  animation: fadeOut 2s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+
         .particles {
           position: fixed;
           top: 0;
