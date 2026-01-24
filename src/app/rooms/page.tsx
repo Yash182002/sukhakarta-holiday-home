@@ -4,10 +4,16 @@ import { useState } from 'react';
 type Room = {
   id: number;
   name: string;
+  type: string;
   price: number;
+  originalPrice: number;
+  maxGuests: number;
+  size: string;
+  view: string;
   images: string[];
-  description: string;
   amenities: string[];
+  description: string;
+  highlights: string[];
 };
 
 export default function RoomsPage() {
