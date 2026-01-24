@@ -2,9 +2,21 @@
 
 import { useState } from 'react';
 
+type Place = {
+  id: number;
+  name: string;
+  category: string;
+  distance: string;
+  time: string;
+  description: string;
+  image: string;
+  rating: number;
+  highlights: string[];
+};
+
 export default function PlacesToVisit() {
   const [activeFilter, setActiveFilter] = useState('all');
-  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
 
   const places = [
     {
