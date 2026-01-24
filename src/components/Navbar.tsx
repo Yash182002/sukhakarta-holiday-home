@@ -18,21 +18,30 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="navbar">
-      <div className="nav-container">
+    <header className="sticky top-0 z-[1000] bg-slate-950/85 backdrop-blur-md border-b border-orange-500/20">
+      <div className="max-w-[1400px] mx-auto px-8 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="logo">
+        <Link 
+          href="/" 
+          className="text-2xl font-extrabold bg-gradient-to-r from-white to-orange-500 bg-clip-text text-transparent"
+        >
           Sukhakarta
         </Link>
 
         {/* Desktop Menu */}
-        <nav className="nav-links">
+        <nav className="hidden md:flex gap-8">
           {navLinks.map(link => (
             <Link
               key={link.href}
               href={link.href}
-              className={`nav-link ${
-                pathname === link.href ? "active" : ""
+              className={`relative font-semibold transition-colors ${
+                pathname === link.href 
+                  ? "text-orange-500" 
+                  : "text-gray-200 hover:text-white"
+              } after:absolute after:left-0 after:-bottom-1.5 after:h-0.5 after:bg-orange-500 after:transition-all ${
+                pathname === link.href 
+                  ? "after:w-full" 
+                  : "after:w-0 hover:after:w-full"
               }`}
             >
               {link.name}
@@ -42,7 +51,7 @@ export default function Navbar() {
 
         {/* Mobile Toggle */}
         <button
-          className="menu-btn"
+          className="md:hidden text-3xl text-white"
           onClick={() => setOpen(!open)}
           aria-label="Toggle Menu"
         >
@@ -52,13 +61,15 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {open && (
-        <div className="mobile-menu">
+        <div className="md:hidden flex flex-col bg-slate-950/98 border-t border-orange-500/20">
           {navLinks.map(link => (
             <Link
               key={link.href}
               href={link.href}
-              className={`mobile-link ${
-                pathname === link.href ? "active" : ""
+              className={`px-8 py-4 font-semibold border-b border-orange-500/10 ${
+                pathname === link.href
+                  ? "text-orange-500 bg-orange-500/10"
+                  : "text-gray-200"
               }`}
               onClick={() => setOpen(false)}
             >
@@ -67,111 +78,6 @@ export default function Navbar() {
           ))}
         </div>
       )}
-
-      <style jsx>{`
-        .navbar {
-          position: sticky;
-          top: 0;
-          z-index: 1000;
-          background: rgba(15, 23, 42, 0.85);
-          backdrop-filter: blur(10px);
-          border-bottom: 1px solid rgba(249, 115, 22, 0.2);
-        }
-
-        .nav-container {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 1rem 2rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .logo {
-          font-size: 1.6rem;
-          font-weight: 800;
-          text-decoration: none;
-          background: linear-gradient(135deg, #fff, #f97316);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .nav-links {
-          display: flex;
-          gap: 2rem;
-        }
-
-        .nav-link {
-          color: #e5e7eb;
-          text-decoration: none;
-          font-weight: 600;
-          position: relative;
-          transition: color 0.3s;
-        }
-
-        .nav-link::after {
-          content: "";
-          position: absolute;
-          left: 0;
-          bottom: -6px;
-          width: 0;
-          height: 2px;
-          background: #f97316;
-          transition: width 0.3s;
-        }
-
-        .nav-link:hover::after,
-        .nav-link.active::after {
-          width: 100%;
-        }
-
-        .nav-link.active {
-          color: #f97316;
-        }
-
-        .menu-btn {
-          display: none;
-          font-size: 1.8rem;
-          background: none;
-          border: none;
-          color: #f8fafc;
-          cursor: pointer;
-        }
-
-        .mobile-menu {
-          display: none;
-        }
-
-        @media (max-width: 900px) {
-          .nav-links {
-            display: none;
-          }
-
-          .menu-btn {
-            display: block;
-          }
-
-          .mobile-menu {
-            display: flex;
-            flex-direction: column;
-            background: rgba(15, 23, 42, 0.98);
-            border-top: 1px solid rgba(249, 115, 22, 0.2);
-          }
-
-          .mobile-link {
-            padding: 1rem 2rem;
-            color: #e5e7eb;
-            text-decoration: none;
-            font-weight: 600;
-            border-bottom: 1px solid rgba(249, 115, 22, 0.1);
-          }
-
-          .mobile-link.active {
-            color: #f97316;
-            background: rgba(249, 115, 22, 0.1);
-          }
-        }
-      `}</style>
     </header>
   );
 }
