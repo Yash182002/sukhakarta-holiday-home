@@ -17,7 +17,7 @@ type Room = {
 };
 
 export default function RoomsPage() {
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [filterPrice, setFilterPrice] = useState('all');
 
