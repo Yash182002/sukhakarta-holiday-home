@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react";
+import type { CSSProperties } from "react";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    subject: 'general',
-    message: ''
+    name: "",
+    email: "",
+    phone: "",
+    subject: "general",
+    message: ""
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,65 +17,70 @@ export default function ContactPage() {
 
   const contactMethods = [
     {
-      icon: '📞',
-      title: 'Call Us',
-      details: '+91 80875 41496',
-      subtext: 'Mon - Sun, 8 AM - 10 PM',
-      action: 'tel:+918087541496',
-      color: '#0ea5e9'
+      icon: "📞",
+      title: "Call Us",
+      details: "+91 80875 41496",
+      subtext: "Mon - Sun, 8 AM - 10 PM",
+      action: "tel:+918087541496",
+      color: "#0ea5e9"
     },
     {
-      icon: '💬',
-      title: 'WhatsApp',
-      details: 'Quick Response',
-      subtext: 'Available 24/7',
-      action: 'https://wa.me/918087541496',
-      color: '#22c55e'
+      icon: "💬",
+      title: "WhatsApp",
+      details: "Quick Response",
+      subtext: "Available 24/7",
+      action: "https://wa.me/918087541496",
+      color: "#22c55e"
     },
     {
-      icon: '✉️',
-      title: 'Email',
-      details: 'info@sukhakarta.com',
-      subtext: 'Response within 24 hours',
-      action: 'mailto:info@sukhakarta.com',
-      color: '#f97316'
+      icon: "✉️",
+      title: "Email",
+      details: "info@sukhakarta.com",
+      subtext: "Response within 24 hours",
+      action: "mailto:info@sukhakarta.com",
+      color: "#f97316"
     },
     {
-      icon: '📍',
-      title: 'Visit Us',
-      details: 'Alibag, Maharashtra',
-      subtext: 'Get Directions',
-      action: '#map',
-      color: '#ec4899'
+      icon: "📍",
+      title: "Visit Us",
+      details: "Alibag, Maharashtra",
+      subtext: "Get Directions",
+      action: "#map",
+      color: "#ec4899"
     }
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.email || !formData.message) {
-      alert('Please fill all required fields');
+      alert("Please fill all required fields");
       return;
     }
 
     setIsSubmitting(true);
-
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const message = `🏖️ Contact Form Submission
 
 Name: ${formData.name}
 Email: ${formData.email}
-Phone: ${formData.phone || 'Not provided'}
+Phone: ${formData.phone || "Not provided"}
 Subject: ${formData.subject}
 
 Message:
 ${formData.message}`;
 
-    const whatsappUrl = `https://wa.me/918087541496?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    const whatsappUrl = `https://wa.me/918087541496?text=${encodeURIComponent(
+      message
+    )}`;
+    window.open(whatsappUrl, "_blank");
 
     setIsSubmitting(false);
     setShowSuccess(true);
@@ -82,25 +88,23 @@ ${formData.message}`;
     setTimeout(() => {
       setShowSuccess(false);
       setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: 'general',
-        message: ''
+        name: "",
+        email: "",
+        phone: "",
+        subject: "general",
+        message: ""
       });
     }, 3000);
   };
 
   return (
     <div className="contact-page">
-      {/* Animated Background */}
       <div className="bg-canvas">
         <div className="orb orb-1"></div>
         <div className="orb orb-2"></div>
         <div className="orb orb-3"></div>
       </div>
 
-      {/* Hero Section */}
       <div className="hero">
         <div className="hero-content">
           <h1>Get In Touch</h1>
@@ -109,19 +113,20 @@ ${formData.message}`;
       </div>
 
       <div className="container">
-        {/* Contact Methods Grid */}
         <div className="methods-grid">
           {contactMethods.map((method, idx) => (
             <a
               key={idx}
               href={method.action}
-              target={method.action.startsWith('http') ? '_blank' : '_self'}
+              target={method.action.startsWith("http") ? "_blank" : "_self"}
               rel="noopener noreferrer"
               className="method-card"
-              style={{ 
-                animationDelay: `${idx * 0.1}s`,
-                '--hover-color': method.color 
-              }}
+              style={
+                {
+                  animationDelay: `${idx * 0.1}s`,
+                  "--hover-color": method.color
+                } as CSSProperties
+              }
             >
               <div className="method-icon">{method.icon}</div>
               <h3>{method.title}</h3>
@@ -146,7 +151,7 @@ ${formData.message}`;
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="John Doe"
+                placeholder="Your name"
               />
             </div>
 
@@ -158,7 +163,7 @@ ${formData.message}`;
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="john@example.com"
+                  placeholder="yourmail@gmail.com"
                 />
               </div>
               <div className="form-group">
@@ -283,11 +288,7 @@ ${formData.message}`;
         </div>
       )}
 
-      style={{
-  animationDelay: `${idx * 0.1}s`,
-  '--hover-color': method.color
-} as React.CSSProperties}
-{`
+       <style jsx>{`
         .contact-page {
           min-height: 100vh;
           background: #0f172a;
