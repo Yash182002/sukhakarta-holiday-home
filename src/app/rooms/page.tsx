@@ -1,6 +1,15 @@
 "use client";
 import { useState } from 'react';
 
+type Room = {
+  id: number;
+  name: string;
+  price: number;
+  images: string[];
+  description: string;
+  amenities: string[];
+};
+
 export default function RoomsPage() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -181,7 +190,7 @@ export default function RoomsPage() {
     return room.price >= range!.min && room.price <= range!.max;
   });
 
-  const openRoomDetails = (room) => {
+  const openRoomDetails = (room: Room) => {
     setSelectedRoom(room);
     setActiveImageIndex(0);
   };
