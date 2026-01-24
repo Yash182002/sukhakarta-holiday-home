@@ -61,12 +61,6 @@ export default function AboutPage() {
         <div className="hero-content">
           <h1>Our Story</h1>
           <p>Creating Unforgettable Memories Since 2019</p>
-          <div className="scroll-indicator">
-            <div className="mouse">
-              <div className="wheel"></div>
-            </div>
-            <span>Scroll to explore</span>
-          </div>
         </div>
       </div>
 
