@@ -18,7 +18,9 @@ interface HomeClientProps {
 /* ---------- COMPONENT ---------- */
 export default function HomeClient({ rooms }: HomeClientProps) {
   return (
-    <main className="min-h-screen bg-red-600 text-white">
+    <main className="
+  relative overflow-hidden text-white
+  bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
 
       <section className="
   relative min-h-screen flex items-center justify-center text-center px-6
