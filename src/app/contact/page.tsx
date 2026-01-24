@@ -283,7 +283,11 @@ ${formData.message}`;
         </div>
       )}
 
-      <style jsx>{`
+      style={{
+  animationDelay: `${idx * 0.1}s`,
+  '--hover-color': method.color
+} as React.CSSProperties}
+{`
         .contact-page {
           min-height: 100vh;
           background: #0f172a;
