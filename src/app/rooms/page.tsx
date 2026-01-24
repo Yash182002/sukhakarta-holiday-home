@@ -178,7 +178,7 @@ export default function RoomsPage() {
 
   const filteredRooms = rooms.filter(room => {
     const range = priceRanges.find(r => r.id === filterPrice);
-    return room.price >= range.min && room.price <= range.max;
+    return room.price >= range!.min && room.price <= range!.max;
   });
 
   const openRoomDetails = (room) => {
