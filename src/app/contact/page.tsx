@@ -35,9 +35,9 @@ export default function ContactPage() {
     {
       icon: "✉️",
       title: "Email",
-      details: "info@sukhakarta.com",
+      details: "sukhakartaholidayhome@gmail.com",
       subtext: "Response within 24 hours",
-      action: "mailto:sukhakartaholidayhome.com",
+      action: "mailto:sukhakartaholidayhome@gmail.com",
       color: "#f97316"
     },
     {
