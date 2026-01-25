@@ -84,11 +84,16 @@ html, body {
         .navbar-container {
           max-width: 1400px;
           margin: 0 auto;
-          padding: 1rem 2rem;
+          padding: 0.6rem 1.5rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+        .navbar-container {
+        padding: 0.45rem 1rem;
         }
 
         /* Logo Section */
@@ -109,9 +114,8 @@ html, body {
       }
 
       @media (max-width: 768px) {
-    .mobile-logo .logo-image {
-    height: 36px;
-    max-width: 120px;
+      .mobile-logo .logo-image   {
+      height: 36px;  
       }
       }
         .logo-icon {
