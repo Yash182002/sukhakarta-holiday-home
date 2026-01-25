@@ -118,7 +118,7 @@ export default function Navbar() {
           </div>
         </div>
       </header>
-
+      );
       <style jsx>{`
         .navbar {
           position: sticky;
