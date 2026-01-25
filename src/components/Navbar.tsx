@@ -81,14 +81,16 @@ export default function Navbar() {
         {/* Mobile Menu */}
         <div className={`mobile-menu ${open ? "open" : ""}`}>
           <div className="mobile-menu-header">
-            <div className="mobile-logo">
-              {/* 🔴 animation disabled INLINE */}
-              <div className="logo-icon" style={{ animation: "none" }}>🏖️</div>
-              <div className="logo-text">
-                <span className="logo-main">Sukhakarta</span>
-                <span className="logo-sub">Holiday Home</span>
-              </div>
-            </div>
+           <div className="mobile-logo">
+             
+          <div className="mobile-logo">
+          <img
+            src="/logo.png"
+            alt="Sukhakarta Holiday Home"
+            className="logo-image"
+            style={{ animation: "none" }}
+          />
+        </div>
 
             <button className="close-btn" onClick={() => setOpen(false)}>✕</button>
           </div>
