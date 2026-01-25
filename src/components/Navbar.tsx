@@ -165,8 +165,8 @@ export default function Navbar() {
 
       @media (max-width: 768px) {
     .mobile-logo .logo-image {
-    height: 40px;
-    max-width: 100px;
+    height: 30px;
+    max-width: 80px;
       }
       }
         .logo-icon {
