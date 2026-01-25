@@ -57,7 +57,6 @@ export default function Navbar() {
         {/* CTA */}
         <Link href="/book" className="cta-button desktop-only">
           <span>Book Your Stay</span>
-          <span className="cta-arrow">→</span>
         </Link>
 
         {/* Mobile Button */}
@@ -86,13 +85,9 @@ export default function Navbar() {
               src="/logo.png"
               alt="Sukhakarta Holiday Home"
               className="logo-image"
-              style={{ height: "40px", width: "auto", animation: "none" }}
+              style={{ height: "50px", width: "auto", animation: "none" }}
             />
           </div>
-
-          <button className="close-btn" onClick={() => setOpen(false)}>
-            ✕
-          </button>
         </div>
 
         <nav className="mobile-nav-links">
