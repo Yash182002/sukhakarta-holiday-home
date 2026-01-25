@@ -36,6 +36,25 @@ export default function Navbar() {
   };
 }, [open]);
 
+  useEffect(() => {
+  if (open) {
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+  } else {
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+    document.body.style.touchAction = "";
+  }
+
+  return () => {
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+    document.body.style.touchAction = "";
+  };
+}, [open]);
+
+
   return (
     <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
       <div className="navbar-container">
