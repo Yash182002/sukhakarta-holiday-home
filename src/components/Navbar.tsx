@@ -119,8 +119,13 @@ export default function Navbar() {
         </div>
       </div>
     </header>
-  );
+
       <style>{`
+
+          html, body {
+          overflow-x: hidden;
+        }
+      
         .navbar {
           position: sticky;
           top: 0;
@@ -128,7 +133,6 @@ export default function Navbar() {
           background: rgba(15, 23, 42, 0.7);
           backdrop-filter: blur(20px);
           border-bottom: 1px solid rgba(249, 115, 22, 0.15);
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .navbar.scrolled {
@@ -166,8 +170,8 @@ export default function Navbar() {
 
       @media (max-width: 768px) {
     .mobile-logo .logo-image {
-    height: 30px;
-    max-width: 80px;
+    height: 36px;
+    max-width: 120px;
       }
       }
         .logo-icon {
@@ -573,4 +577,5 @@ export default function Navbar() {
           }
         }
       `}</style>
+    );
 }
