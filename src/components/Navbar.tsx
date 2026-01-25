@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const navLinks = [
-  { name: "Home", href: "/"},
-  { name: "Rooms", href: "/rooms"},
-  { name: "Book Now", href: "/book"},
-  { name: "Places", href: "/places"},
-  { name: "About", href: "/about"},
-  { name: "Contact", href: "/contact"}
+  { name: "Home", href: "/" },
+  { name: "Rooms", href: "/rooms" },
+  { name: "Book Now", href: "/book" },
+  { name: "Places", href: "/places" },
+  { name: "About", href: "/about" },
+  { name: "Contact", href: "/contact" }
 ];
 
 export default function Navbar() {
@@ -19,52 +19,50 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <>
-      <header className={`navbar ${scrolled ? 'scrolled' : ''}`}>
+      <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
         <div className="navbar-container">
-          {/* Logo Section */}
+
+          {/* Logo */}
           <Link href="/" className="logo-section">
-            <div className="logo-icon">🏖️</div>
+            {/* 🔴 animation disabled INLINE */}
+            <div className="logo-icon" style={{ animation: "none" }}>🏖️</div>
             <div className="logo-text">
               <span className="logo-main">Sukhakarta</span>
               <span className="logo-sub">Holiday Home</span>
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav */}
           <nav className="desktop-nav">
             {navLinks.map((link, idx) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`nav-link ${pathname === link.href ? 'active' : ''}`}
+                className={`nav-link ${pathname === link.href ? "active" : ""}`}
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
-                <span className="nav-icon">{link.icon}</span>
                 <span className="nav-text">{link.name}</span>
-                {pathname === link.href && <span className="active-indicator"></span>}
+                {pathname === link.href && <span className="active-indicator" />}
               </Link>
             ))}
           </nav>
 
-          {/* CTA Button */}
+          {/* CTA */}
           <Link href="/book" className="cta-button desktop-only">
             <span>Book Your Stay</span>
             <span className="cta-arrow">→</span>
           </Link>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Button */}
           <button
-            className={`mobile-menu-btn ${open ? 'open' : ''}`}
+            className={`mobile-menu-btn ${open ? "open" : ""}`}
             onClick={() => setOpen(!open)}
             aria-label="Toggle Menu"
           >
@@ -74,22 +72,25 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile Menu Overlay */}
-        <div className={`mobile-overlay ${open ? 'open' : ''}`} onClick={() => setOpen(false)}></div>
+        {/* Overlay */}
+        <div
+          className={`mobile-overlay ${open ? "open" : ""}`}
+          onClick={() => setOpen(false)}
+        />
 
         {/* Mobile Menu */}
-        <div className={`mobile-menu ${open ? 'open' : ''}`}>
+        <div className={`mobile-menu ${open ? "open" : ""}`}>
           <div className="mobile-menu-header">
             <div className="mobile-logo">
-              <div className="logo-icon">🏖️</div>
+              {/* 🔴 animation disabled INLINE */}
+              <div className="logo-icon" style={{ animation: "none" }}>🏖️</div>
               <div className="logo-text">
                 <span className="logo-main">Sukhakarta</span>
                 <span className="logo-sub">Holiday Home</span>
               </div>
             </div>
-            <button className="close-btn" onClick={() => setOpen(false)}>
-              ✕
-            </button>
+
+            <button className="close-btn" onClick={() => setOpen(false)}>✕</button>
           </div>
 
           <nav className="mobile-nav-links">
@@ -97,11 +98,10 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`mobile-nav-link ${pathname === link.href ? 'active' : ''}`}
+                className={`mobile-nav-link ${pathname === link.href ? "active" : ""}`}
                 onClick={() => setOpen(false)}
                 style={{ animationDelay: `${idx * 0.05}s` }}
               >
-                <span className="nav-icon">{link.icon}</span>
                 <span className="nav-text">{link.name}</span>
                 <span className="nav-arrow">→</span>
               </Link>
@@ -113,16 +113,6 @@ export default function Navbar() {
               <span>Book Your Stay Now</span>
               <span className="cta-icon">🎉</span>
             </Link>
-            <div className="contact-info">
-              <a href="tel:+918087541496" className="contact-item">
-                <span>📞</span>
-                <span>+91 80875 41496</span>
-              </a>
-              <a href="mailto:sukhakartaholidayhome@gmail.com" className="contact-item">
-                <span>✉️</span>
-                <span>Email Us</span>
-              </a>
-            </div>
           </div>
         </div>
       </header>
