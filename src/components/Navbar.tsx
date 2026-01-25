@@ -33,7 +33,7 @@ export default function Navbar() {
         <div className="navbar-container">
           {/* Logo Section */}
           <Link href="/" className="logo-section">
-            <div className="logo-icon"></div>
+            <div className="logo-icon">🏖️</div>
             <div className="logo-text">
               <span className="logo-main">Sukhakarta</span>
               <span className="logo-sub">Holiday Home</span>
