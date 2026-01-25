@@ -336,8 +336,9 @@ html, body {
           position: fixed;
           top: 0;
           right: -100%;
-          width: 90%;
-          max-width: 400px;
+          width: 50vw;
+          max-width: 360px;
+          min-width: 280px;
           height: 100vh;
           background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
           backdrop-filter: blur(20px);
@@ -348,6 +349,12 @@ html, body {
           display: flex;
           flex-direction: column;
           overflow-y: auto;
+        }
+
+        @media (max-width: 480px) {
+          .mobile-menu {
+            width: 70vw;   /* slightly bigger on tiny screens */
+          }
         }
 
         .mobile-menu.open {
