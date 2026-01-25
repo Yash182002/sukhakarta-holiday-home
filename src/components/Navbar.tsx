@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
 const navLinks = [
-  { name: "Home", href: "/", icon: "🏠" },
-  { name: "Rooms", href: "/rooms", icon: "🛏️" },
-  { name: "Book Now", href: "/book", icon: "📅" },
-  { name: "Places", href: "/places", icon: "🗺️" },
-  { name: "About", href: "/about", icon: "ℹ️" },
-  { name: "Contact", href: "/contact", icon: "📞" }
+  { name: "Home", href: "/"},
+  { name: "Rooms", href: "/rooms"},
+  { name: "Book Now", href: "/book"},
+  { name: "Places", href: "/places"},
+  { name: "About", href: "/about"},
+  { name: "Contact", href: "/contact"}
 ];
 
 export default function Navbar() {
@@ -33,7 +33,7 @@ export default function Navbar() {
         <div className="navbar-container">
           {/* Logo Section */}
           <Link href="/" className="logo-section">
-            <div className="logo-icon">🏖️</div>
+            <div className="logo-icon"></div>
             <div className="logo-text">
               <span className="logo-main">Sukhakarta</span>
               <span className="logo-sub">Holiday Home</span>
