@@ -31,14 +31,14 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link href="/" className="logo-section">
-            {/* 🔴 animation disabled INLINE */}
-            <div className="logo-icon" style={{ animation: "none" }}>🏖️</div>
-            <div className="logo-text">
-              <span className="logo-main">Sukhakarta</span>
-              <span className="logo-sub">Holiday Home</span>
-            </div>
-          </Link>
-
+        <img
+          src="/logo.png"
+          alt="Sukhakarta Holiday Home"
+          className="logo-image"
+          style={{ animation: "none" }}
+        />
+      </Link>
+          
           {/* Desktop Nav */}
           <nav className="desktop-nav">
             {navLinks.map((link, idx) => (
