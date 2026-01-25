@@ -118,8 +118,9 @@ export default function Navbar() {
           </Link>
         </div>
       </div>
-
-      <style jsx>{`
+    </header>
+  );
+      <style>{`
         .navbar {
           position: sticky;
           top: 0;
@@ -572,6 +573,4 @@ export default function Navbar() {
           }
         }
       `}</style>
-    </header>
-  );
 }
