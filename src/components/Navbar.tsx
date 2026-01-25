@@ -33,7 +33,7 @@ export default function Navbar() {
             src="/logo.png"
             alt="Sukhakarta Holiday Home"
             className="logo-image"
-            style={{ height: "90px", width: "auto", animation: "none" }}
+            style={{ height: "80px", width: "auto", animation: "none" }}
           />
         </Link>
 
@@ -165,8 +165,8 @@ export default function Navbar() {
 
       @media (max-width: 768px) {
     .mobile-logo .logo-image {
-    height: 42px;
-    max-width: 140px;
+    height: 40px;
+    max-width: 100px;
       }
       }
         .logo-icon {
