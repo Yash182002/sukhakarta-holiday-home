@@ -86,7 +86,7 @@ export default function Navbar() {
               src="/logo.png"
               alt="Sukhakarta Holiday Home"
               className="logo-image"
-              style={{ height: "48px", width: "auto", animation: "none" }}
+              style={{ height: "40px", width: "auto", animation: "none" }}
             />
           </div>
 
