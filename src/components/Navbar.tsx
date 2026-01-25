@@ -156,6 +156,19 @@ export default function Navbar() {
           z-index: 1001;
         }
 
+        .logo-image {
+        height: 48px;
+        width: auto;
+        max-width: 160px;
+        object-fit: contain;
+      }
+
+      @media (max-width: 768px) {
+    .mobile-logo .logo-image {
+    height: 42px;
+    max-width: 140px;
+      }
+      }
         .logo-icon {
           font-size: 2.5rem;
           animation: float 3s ease-in-out infinite;
