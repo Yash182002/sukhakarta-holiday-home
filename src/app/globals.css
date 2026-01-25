@@ -336,7 +336,7 @@ html, body {
           position: fixed;
           top: 0;
           right: -100%;
-          width: 50vw;
+          width: 40vw;
           max-width: 360px;
           min-width: 280px;
           height: 100vh;
