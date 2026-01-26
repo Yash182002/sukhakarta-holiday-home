@@ -336,9 +336,9 @@ html, body {
           position: fixed;
           top: 0;
           right: -100%;
-          width: 40vw;
-          max-width: 360px;
-          min-width: 280px;
+          width: 42vw;
+          max-width: 300px;
+          min-width: 240px;
           height: 100vh;
           background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
           backdrop-filter: blur(20px);
@@ -353,7 +353,7 @@ html, body {
 
         @media (max-width: 480px) {
           .mobile-menu {
-            width: 70vw;   /* slightly bigger on tiny screens */
+            width: 65vw;   /* slightly bigger on tiny screens */
           }
         }
 
@@ -363,9 +363,10 @@ html, body {
 
         .mobile-menu-header {
           display: flex;
+           min-height: 64px;
           align-items: center;
           justify-content: space-between;
-          padding: 1.5rem;
+          padding: 0.75rem 1rem;
           border-bottom: 1px solid rgba(249, 115, 22, 0.2);
         }
 
@@ -373,6 +374,11 @@ html, body {
           display: flex;
           align-items: center;
           gap: 0.75rem;
+        }
+
+        .mobile-logo .logo-image {
+          height: 32px;
+          max-width: 120px;
         }
 
         .mobile-logo .logo-icon {
@@ -419,7 +425,7 @@ html, body {
           display: flex;
           align-items: center;
           gap: 1rem;
-          padding: 1rem 1.25rem;
+          padding: 0.65rem 0.9rem;
           color: #cbd5e1;
           text-decoration: none;
           font-weight: 600;
