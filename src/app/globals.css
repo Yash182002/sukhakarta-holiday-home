@@ -584,12 +584,7 @@ html, body {
           animation: float 20s ease-in-out infinite;
         }
 
-        @media (max-width: 768px) {
-          .footer-orb {
-            animation: none !important;
-            filter: none !important;
-          }
-        }
+       
 
         .orb-1 {
           width: 500px;
