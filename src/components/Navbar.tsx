@@ -145,7 +145,6 @@ export default function Navbar() {
             onClick={() => setOpen(false)}
           >
             <span>Book Your Stay Now</span>
-            <span className="cta-icon">🎉</span>
           </Link>
         </div>
       </div>
