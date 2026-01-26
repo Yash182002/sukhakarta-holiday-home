@@ -39,10 +39,10 @@ export default function HomeClient({ rooms }: HomeClientProps) {
           <h1>Welcome to Paradise</h1>
           <p>Discover luxury coastal living in the heart of Alibag</p>
           <div className="hero-buttons">
-            <Link href="/book" className="hero-btn primary">
+            <Link href="/book" className="cta-button">
               Book Your Stay
             </Link>
-            <Link href="/rooms" className="hero-btn secondary">
+            <Link href="/rooms" className="cta-button">
               Explore Rooms
             </Link>
           </div>
