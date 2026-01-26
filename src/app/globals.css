@@ -226,7 +226,7 @@ html, body {
         }
 
         /* CTA Button */
-        .cta-button {
+        :global(.cta-button) {
           display: none;
           align-items: center;
           gap: 0.5rem;
