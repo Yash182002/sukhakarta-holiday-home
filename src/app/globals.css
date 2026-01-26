@@ -795,6 +795,9 @@ html, body {
           color: #cbd5e1;
           margin: 0;
           font-weight: 500;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          align-items: flex-start;
         }
 
         .hours-list {
