@@ -93,7 +93,7 @@ html, body {
 
         @media (max-width: 768px) {
         .navbar-container {
-        padding: 0.45rem 1rem;
+        padding: 0.3rem 0.75rem;
         }
         }
 
@@ -116,7 +116,7 @@ html, body {
 
       @media (max-width: 768px) {
       .mobile-logo .logo-image   {
-      height: 36px;  
+      height: 28px;  
       }
       }
         .logo-icon {
@@ -288,6 +288,16 @@ html, body {
         @media (min-width: 1024px) {
           .mobile-menu-btn {
             display: none;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .mobile-menu-btn {
+            width: 24px;
+            height: 18px;
+          }
+          .mobile-menu-btn span {
+            height: 2px;
           }
         }
 
