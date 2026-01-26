@@ -349,7 +349,7 @@ html, body {
           width: 42vw;
           max-width: 300px;
           min-width: 240px;
-          height: 100vh;
+          height: 100dvh;
           background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
           backdrop-filter: blur(20px);
           border-left: 1px solid rgba(249, 115, 22, 0.2);
@@ -487,6 +487,7 @@ html, body {
         .mobile-menu-footer {
           padding: 1.5rem;
           border-top: 1px solid rgba(249, 115, 22, 0.2);
+          padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
         }
 
         .mobile-cta {
