@@ -553,6 +553,17 @@ html, body {
           color: #f8fafc;
           font-family: system-ui, -apple-system, sans-serif;
           overflow: hidden;
+          backdrop-filter: blur(8px);
+          contain: layout paint;
+          content-visibility: auto;
+          contain-intrinsic-size: 1000px;
+        }
+
+          @media (max-width: 768px) {
+          .footer {
+            backdrop-filter: none;
+            background: rgba(15, 23, 42, 0.95);
+          }
         }
 
         .footer-bg {
@@ -573,6 +584,13 @@ html, body {
           animation: float 20s ease-in-out infinite;
         }
 
+        @media (max-width: 768px) {
+          .footer-orb {
+            animation: none !important;
+            filter: none !important;
+          }
+        }
+
         .orb-1 {
           width: 500px;
           height: 500px;
@@ -591,8 +609,8 @@ html, body {
         }
 
         @keyframes float {
-          0%, 100% { transform: translate(0, 0); }
-          50% { transform: translate(50px, -50px); }
+          from { transform: translateY(0); }
+          to { transform: translateY(20px); }
         }
 
         .footer-container {
