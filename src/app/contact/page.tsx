@@ -289,6 +289,16 @@ ${formData.message}`;
       )}
 
        <style jsx>{`
+
+        .hero,
+        .methods-grid,
+        .content-grid,
+        .map-section {
+          position: relative;
+          isolation: isolate;
+          contain: layout paint;
+        }
+
         .contact-page {
           min-height: 100vh;
           background: #0f172a;
@@ -405,6 +415,15 @@ ${formData.message}`;
           position: relative;
           z-index: 1;
         }
+
+        @media (max-width: 768px) {
+        .container {
+          padding-left: 1rem;
+          padding-right: 1rem;
+          margin-left: auto;
+          margin-right: auto;
+        }
+      }
 
         .methods-grid {
           display: grid;
