@@ -295,16 +295,15 @@ ${formData.message}`;
           color: #f8fafc;
           font-family: system-ui, -apple-system, sans-serif;
           position: relative;
+          isolation: isolate;
         }
 
         .bg-canvas {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
+          position: absolute;   /* NOT fixed */
+          inset: 0;
           overflow: hidden;
           z-index: 0;
+          pointer-events: none;
         }
 
         .orb {
@@ -313,6 +312,18 @@ ${formData.message}`;
           filter: blur(80px);
           opacity: 0.3;
           animation: float 20s ease-in-out infinite;
+        }
+
+        @media (max-width: 768px) {
+          .orb {
+            filter: blur(60px);
+            opacity: 0.2;
+          }
+        
+          .container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+          }
         }
 
         .orb-1 {
@@ -415,6 +426,7 @@ ${formData.message}`;
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           overflow: hidden;
           animation: cardSlide 0.6s ease-out both;
+          will-change: transform;
         }
 
         @keyframes cardSlide {
@@ -445,7 +457,7 @@ ${formData.message}`;
         }
 
         .method-card:hover {
-          transform: translateY(-10px);
+          transform: translateY(-6px);
           border-color: var(--hover-color);
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
@@ -492,6 +504,7 @@ ${formData.message}`;
           display: grid;
           grid-template-columns: 1.5fr 1fr;
           gap: 3rem;
+          align-items: start;
           margin-bottom: 4rem;
         }
 
