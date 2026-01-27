@@ -1,99 +1,83 @@
-"use client";
-
-import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
-
-export default function AdminLoginPage() {
-  const router = useRouter();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-
-      if (data.session) {
-        router.push("/admin");
-      }
-    } catch {
-      setError("An unexpected error occurred");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="login-page">
-      {/* Background */}
-      <div className="bg-gradient">
-        <div className="orb orb-1"></div>
-        <div className="orb orb-2"></div>
-        <div className="orb orb-3"></div>
-      </div>
-
-      {/* Login Card */}
-      <div className="login-container">
-        <div className="login-card">
-          <div className="login-header">
-            <h1>Sukhakarta</h1>
-            <p>Admin Panel</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="login-form">
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-              />
+        "use client";
+        
+        import { useState, type FormEvent } from "react";
+        import { supabase } from "@/lib/supabaseClient";
+        import { useRouter } from "next/navigation";
+        
+        export default function AdminLoginPage() {
+          const router = useRouter();
+        
+          const [email, setEmail] = useState("");
+          const [password, setPassword] = useState("");
+          const [loading, setLoading] = useState(false);
+          const [error, setError] = useState("");
+        
+          async function handleLogin(e: FormEvent) {
+            e.preventDefault();
+            setError("");
+            setLoading(true);
+        
+            try {
+              const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+              });
+        
+              if (error) {
+                setError(error.message);
+                return;
+              }
+        
+              if (data.session) {
+                router.push("/admin");
+              }
+            } catch {
+              setError("An unexpected error occurred");
+            } finally {
+              setLoading(false);
+            }
+          }
+        
+          return (
+            <div className="login-page">
+              <div className="login-container">
+                <div className="login-card">
+                  <h1>Sukhakarta</h1>
+                  <p>Admin Panel</p>
+        
+                  <form onSubmit={handleLogin}>
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={loading}
+                      required
+                    />
+        
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                      required
+                    />
+        
+                    {error && <p className="error">{error}</p>}
+        
+                    <button type="submit" disabled={loading}>
+                      {loading ? "Signing in..." : "Sign In"}
+                    </button>
+                  </form>
+        
+                  <a href="/">← Back to website</a>
+                </div>
+              </div>
             </div>
-
-            <div className="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            {error && <p className="error">{error}</p>}
-
-            <button type="submit" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
-
-          <a href="/" className="back-link">← Back to website</a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
+          );
+        }
+        
       <style jsx>{`
         * {
           box-sizing: border-box;
