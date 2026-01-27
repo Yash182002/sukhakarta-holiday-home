@@ -289,14 +289,13 @@ ${formData.message}`;
       )}
 
        <style jsx>{`
-
         .hero,
         .methods-grid,
         .content-grid,
         .map-section {
           position: relative;
           isolation: isolate;
-          contain: layout paint;
+          contain: paint;
         }
 
         .contact-page {
@@ -331,8 +330,7 @@ ${formData.message}`;
           }
         
           .container {
-            padding-left: 1rem;
-            padding-right: 1rem;
+            padding: 0 1rem 3rem
           }
         }
 
@@ -409,11 +407,13 @@ ${formData.message}`;
         }
 
         .container {
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 2rem 4rem;
-          position: relative;
-          z-index: 1;
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 2rem 4rem;
+            position: relative;
+            z-index: 1;
+            overflow-x: hidden;
         }
 
         @media (max-width: 768px) {
@@ -479,6 +479,12 @@ ${formData.message}`;
           transform: translateY(-6px);
           border-color: var(--hover-color);
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 768px) {
+          .method-card:hover {
+            transform: none;
+          }
         }
 
         .method-icon {
@@ -850,6 +856,17 @@ ${formData.message}`;
           .hero {
             padding: 6rem 1rem 3rem;
           }
+        }
+        .methods-grid,
+        .content-grid {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+        .method-card,
+        .form-section,
+        .info-section {
+          min-width: 0;
         }
       `}</style>
     </div>
