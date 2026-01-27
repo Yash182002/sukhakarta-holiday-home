@@ -15,7 +15,7 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true);
 
   // Check if we're on the login page
-  const isLoginPage = pathname === "/admin/login";
+  const isLoginPage = pathname === "/admin/(auth)/login";
 
   useEffect(() => {
     checkAuth();
@@ -27,7 +27,7 @@ export default function AdminLayout({
     if (session) {
       setIsAuthenticated(true);
     } else if (!isLoginPage) {
-      router.replace("/admin/login");
+      router.replace("/admin/(auth)/login");
     }
     
     setLoading(false);
@@ -35,7 +35,7 @@ export default function AdminLayout({
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.replace("/admin/login");
+    router.replace("/admin/(auth)/login");
   }
 
   // If on login page, just render children without sidebar
