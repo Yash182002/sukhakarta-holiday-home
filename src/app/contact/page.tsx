@@ -288,14 +288,9 @@ ${formData.message}`;
         </div>
       )}
 
-       <style jsx>{`
-        .hero,
-        .methods-grid,
-        .content-grid,
-        .map-section {
-          position: relative;
-          isolation: isolate;
-          contain: paint;
+      <style jsx>{`
+        * {
+          box-sizing: border-box;
         }
 
         .contact-page {
@@ -305,10 +300,12 @@ ${formData.message}`;
           font-family: system-ui, -apple-system, sans-serif;
           position: relative;
           isolation: isolate;
+          overflow-x: hidden;
+          width: 100%;
         }
 
         .bg-canvas {
-          position: absolute;   /* NOT fixed */
+          position: absolute;
           inset: 0;
           overflow: hidden;
           z-index: 0;
@@ -327,10 +324,6 @@ ${formData.message}`;
           .orb {
             filter: blur(60px);
             opacity: 0.2;
-          }
-        
-          .container {
-            padding: 0 1rem 3rem
           }
         }
 
@@ -375,24 +368,32 @@ ${formData.message}`;
 
         .hero {
           position: relative;
-          padding: 8rem 2rem 4rem;
+          padding: 8rem 1rem 4rem;
           text-align: center;
           z-index: 1;
+          width: 100%;
+        }
+
+        .hero-content {
+          max-width: 100%;
+          overflow-wrap: break-word;
         }
 
         .hero-content h1 {
-          font-size: clamp(3rem, 8vw, 5rem);
+          font-size: clamp(2.5rem, 8vw, 5rem);
           margin-bottom: 1rem;
           background: linear-gradient(135deg, #fff, #f97316, #0ea5e9);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           animation: fadeInUp 0.8s ease-out;
+          word-wrap: break-word;
         }
 
         .hero-content p {
-          font-size: 1.3rem;
+          font-size: clamp(1rem, 3vw, 1.3rem);
           color: #cbd5e1;
           animation: fadeInUp 0.8s ease-out 0.2s both;
+          padding: 0 1rem;
         }
 
         @keyframes fadeInUp {
@@ -407,34 +408,38 @@ ${formData.message}`;
         }
 
         .container {
-            max-width: 1400px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 0 2rem 4rem;
-            position: relative;
-            z-index: 1;
-            overflow-x: hidden;
+          max-width: 1400px;
+          width: 100%;
+          margin: 0 auto;
+          padding: 0 1rem 4rem;
+          position: relative;
+          z-index: 1;
+          box-sizing: border-box;
         }
 
-        @media (max-width: 768px) {
-        .container {
-          padding-left: 1rem;
-          padding-right: 1rem;
-          margin-left: auto;
-          margin-right: auto;
+        @media (min-width: 768px) {
+          .container {
+            padding: 0 2rem 4rem;
+          }
         }
-      }
 
         .methods-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-          gap: 2rem;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+          gap: 1rem;
           margin-bottom: 4rem;
+          width: 100%;
+        }
+
+        @media (min-width: 640px) {
+          .methods-grid {
+            gap: 2rem;
+          }
         }
 
         .method-card {
           position: relative;
-          padding: 2rem;
+          padding: 1.5rem;
           background: rgba(255, 255, 255, 0.05);
           backdrop-filter: blur(10px);
           border: 2px solid rgba(249, 115, 22, 0.2);
@@ -445,17 +450,23 @@ ${formData.message}`;
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           overflow: hidden;
           animation: cardSlide 0.6s ease-out both;
-          will-change: transform;
+          min-width: 0;
+        }
+
+        @media (min-width: 640px) {
+          .method-card {
+            padding: 2rem;
+          }
         }
 
         @keyframes cardSlide {
           from {
             opacity: 0;
-            transform: translateX(-50px);
+            transform: translateY(30px);
           }
           to {
             opacity: 1;
-            transform: translateX(0);
+            transform: translateY(0);
           }
         }
 
@@ -475,15 +486,11 @@ ${formData.message}`;
           transform: scaleX(1);
         }
 
-        .method-card:hover {
-          transform: translateY(-6px);
-          border-color: var(--hover-color);
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-
-        @media (max-width: 768px) {
+        @media (hover: hover) {
           .method-card:hover {
-            transform: none;
+            transform: translateY(-6px);
+            border-color: var(--hover-color);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
           }
         }
 
@@ -499,18 +506,28 @@ ${formData.message}`;
         }
 
         .method-card h3 {
-          font-size: 1.5rem;
+          font-size: 1.25rem;
           margin-bottom: 0.5rem;
           color: var(--hover-color);
+          word-wrap: break-word;
+        }
+
+        @media (min-width: 640px) {
+          .method-card h3 {
+            font-size: 1.5rem;
+          }
         }
 
         .method-details {
           font-weight: 600;
           margin-bottom: 0.5rem;
+          font-size: 0.9rem;
+          word-wrap: break-word;
+          overflow-wrap: anywhere;
         }
 
         .method-subtext {
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           color: #94a3b8;
         }
 
@@ -521,20 +538,30 @@ ${formData.message}`;
           transition: transform 0.3s;
         }
 
-        .method-card:hover .method-arrow {
-          transform: translateX(10px);
+        @media (hover: hover) {
+          .method-card:hover .method-arrow {
+            transform: translateX(10px);
+          }
         }
 
         .content-grid {
           display: grid;
-          grid-template-columns: 1.5fr 1fr;
-          gap: 3rem;
-          align-items: start;
+          grid-template-columns: 1fr;
+          gap: 2rem;
           margin-bottom: 4rem;
+          width: 100%;
+        }
+
+        @media (min-width: 968px) {
+          .content-grid {
+            grid-template-columns: 1.5fr 1fr;
+            gap: 3rem;
+          }
         }
 
         .form-section, .info-section {
           animation: fadeIn 0.8s ease-out;
+          min-width: 0;
         }
 
         @keyframes fadeIn {
@@ -547,20 +574,34 @@ ${formData.message}`;
           backdrop-filter: blur(10px);
           border: 1px solid rgba(249, 115, 22, 0.2);
           border-radius: 24px;
-          padding: 2.5rem;
+          padding: 1.5rem;
+        }
+
+        @media (min-width: 640px) {
+          .form-section {
+            padding: 2.5rem;
+          }
         }
 
         .form-section h2 {
-          font-size: 2rem;
+          font-size: 1.75rem;
           margin-bottom: 0.5rem;
           background: linear-gradient(135deg, #fff, #f97316);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
+          word-wrap: break-word;
+        }
+
+        @media (min-width: 640px) {
+          .form-section h2 {
+            font-size: 2rem;
+          }
         }
 
         .form-subtitle {
           color: #94a3b8;
           margin-bottom: 2rem;
+          font-size: 0.9rem;
         }
 
         .form-group {
@@ -569,8 +610,14 @@ ${formData.message}`;
 
         .form-row {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr;
           gap: 1rem;
+        }
+
+        @media (min-width: 640px) {
+          .form-row {
+            grid-template-columns: 1fr 1fr;
+          }
         }
 
         label {
@@ -578,17 +625,25 @@ ${formData.message}`;
           margin-bottom: 0.5rem;
           color: #cbd5e1;
           font-weight: 500;
+          font-size: 0.95rem;
         }
 
         input, select, textarea {
           width: 100%;
-          padding: 1rem;
+          padding: 0.875rem;
           background: rgba(255, 255, 255, 0.1);
           border: 1px solid rgba(249, 115, 22, 0.3);
           border-radius: 12px;
           color: #f8fafc;
           font-size: 1rem;
           transition: all 0.3s;
+          box-sizing: border-box;
+        }
+
+        @media (min-width: 640px) {
+          input, select, textarea {
+            padding: 1rem;
+          }
         }
 
         input:focus, select:focus, textarea:focus {
@@ -604,16 +659,17 @@ ${formData.message}`;
 
         textarea {
           resize: vertical;
+          min-height: 120px;
         }
 
         .submit-btn {
           width: 100%;
-          padding: 1.2rem 2rem;
+          padding: 1rem 2rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           border: none;
           border-radius: 12px;
           color: white;
-          font-size: 1.1rem;
+          font-size: 1rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s;
@@ -624,9 +680,18 @@ ${formData.message}`;
           gap: 0.5rem;
         }
 
-        .submit-btn:hover:not(:disabled) {
-          transform: translateY(-3px);
-          box-shadow: 0 15px 40px rgba(249, 115, 22, 0.6);
+        @media (min-width: 640px) {
+          .submit-btn {
+            font-size: 1.1rem;
+            padding: 1.2rem 2rem;
+          }
+        }
+
+        @media (hover: hover) {
+          .submit-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(249, 115, 22, 0.6);
+          }
         }
 
         .submit-btn:disabled {
@@ -638,8 +703,10 @@ ${formData.message}`;
           transition: transform 0.3s;
         }
 
-        .submit-btn:hover .btn-arrow {
-          transform: translateX(5px);
+        @media (hover: hover) {
+          .submit-btn:hover .btn-arrow {
+            transform: translateX(5px);
+          }
         }
 
         .loader {
@@ -663,17 +730,27 @@ ${formData.message}`;
           border: 1px solid rgba(249, 115, 22, 0.2);
           border-radius: 20px;
           padding: 1.5rem;
+          min-width: 0;
         }
 
         .info-card h3 {
           color: #f97316;
           margin-bottom: 1rem;
-          font-size: 1.3rem;
+          font-size: 1.2rem;
+          word-wrap: break-word;
+        }
+
+        @media (min-width: 640px) {
+          .info-card h3 {
+            font-size: 1.3rem;
+          }
         }
 
         .info-card p {
           color: #cbd5e1;
           margin-bottom: 0.5rem;
+          font-size: 0.95rem;
+          word-wrap: break-word;
         }
 
         .hours-list {
@@ -689,6 +766,12 @@ ${formData.message}`;
           background: rgba(255, 255, 255, 0.05);
           border-radius: 8px;
           color: #cbd5e1;
+          font-size: 0.9rem;
+          gap: 0.5rem;
+        }
+
+        .hours-item span {
+          word-wrap: break-word;
         }
 
         .hours-item.highlight {
@@ -715,12 +798,15 @@ ${formData.message}`;
           color: #f8fafc;
           text-decoration: none;
           transition: all 0.3s;
+          font-size: 0.95rem;
         }
 
-        .social-btn:hover {
-          background: rgba(249, 115, 22, 0.1);
-          border-color: #f97316;
-          transform: translateX(5px);
+        @media (hover: hover) {
+          .social-btn:hover {
+            background: rgba(249, 115, 22, 0.1);
+            border-color: #f97316;
+            transform: translateX(5px);
+          }
         }
 
         .social-btn span:first-child {
@@ -729,23 +815,37 @@ ${formData.message}`;
 
         .map-section {
           animation: fadeInUp 0.8s ease-out 0.4s both;
+          width: 100%;
         }
 
         .map-section h2 {
           text-align: center;
-          font-size: 2.5rem;
+          font-size: 2rem;
           margin-bottom: 2rem;
           background: linear-gradient(135deg, #fff, #f97316);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
+          word-wrap: break-word;
+        }
+
+        @media (min-width: 640px) {
+          .map-section h2 {
+            font-size: 2.5rem;
+          }
         }
 
         .map-placeholder {
           background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(14, 165, 233, 0.1));
           border: 2px solid rgba(249, 115, 22, 0.3);
           border-radius: 24px;
-          padding: 4rem 2rem;
+          padding: 3rem 1.5rem;
           text-align: center;
+        }
+
+        @media (min-width: 640px) {
+          .map-placeholder {
+            padding: 4rem 2rem;
+          }
         }
 
         .map-icon {
@@ -755,14 +855,22 @@ ${formData.message}`;
         }
 
         .map-placeholder h3 {
-          font-size: 2rem;
+          font-size: 1.5rem;
           margin-bottom: 0.5rem;
           color: #f97316;
+          word-wrap: break-word;
+        }
+
+        @media (min-width: 640px) {
+          .map-placeholder h3 {
+            font-size: 2rem;
+          }
         }
 
         .map-placeholder p {
           color: #cbd5e1;
           margin-bottom: 2rem;
+          word-wrap: break-word;
         }
 
         .map-btn {
@@ -774,11 +882,14 @@ ${formData.message}`;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s;
+          font-size: 0.95rem;
         }
 
-        .map-btn:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 10px 30px rgba(249, 115, 22, 0.5);
+        @media (hover: hover) {
+          .map-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(249, 115, 22, 0.5);
+          }
         }
 
         .modal {
@@ -794,6 +905,7 @@ ${formData.message}`;
           justify-content: center;
           z-index: 1000;
           animation: fadeIn 0.3s ease-out;
+          padding: 1rem;
         }
 
         .modal-content {
@@ -801,9 +913,16 @@ ${formData.message}`;
           backdrop-filter: blur(20px);
           border: 2px solid rgba(34, 197, 94, 0.3);
           border-radius: 24px;
-          padding: 3rem;
+          padding: 2rem;
           text-align: center;
           animation: scaleIn 0.4s ease-out;
+          max-width: 90%;
+        }
+
+        @media (min-width: 640px) {
+          .modal-content {
+            padding: 3rem;
+          }
         }
 
         @keyframes scaleIn {
@@ -834,39 +953,18 @@ ${formData.message}`;
         .modal-content h3 {
           margin-bottom: 0.5rem;
           color: #22c55e;
+          font-size: 1.5rem;
+        }
+
+        @media (min-width: 640px) {
+          .modal-content h3 {
+            font-size: 1.75rem;
+          }
         }
 
         .modal-content p {
           color: #cbd5e1;
-        }
-
-        @media (max-width: 968px) {
-          .content-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .methods-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .form-row {
-            grid-template-columns: 1fr;
-          }
-
-          .hero {
-            padding: 6rem 1rem 3rem;
-          }
-        }
-        .methods-grid,
-        .content-grid {
-          width: 100%;
-          max-width: 100%;
-          min-width: 0;
-        }
-        .method-card,
-        .form-section,
-        .info-section {
-          min-width: 0;
+          font-size: 0.95rem;
         }
       `}</style>
     </div>
