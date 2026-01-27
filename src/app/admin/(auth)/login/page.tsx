@@ -4,9 +4,8 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
-  export default function AdminLoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter();
-  }  
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,18 +30,18 @@ import { useRouter } from "next/navigation";
       }
 
       if (data.session) {
-        // Successfully logged in
         router.push("/admin");
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
+    } finally {
       setLoading(false);
     }
   }
 
   return (
     <div className="login-page">
-      {/* Animated Background */}
+      {/* Background */}
       <div className="bg-gradient">
         <div className="orb orb-1"></div>
         <div className="orb orb-2"></div>
@@ -52,86 +51,48 @@ import { useRouter } from "next/navigation";
       {/* Login Card */}
       <div className="login-container">
         <div className="login-card">
-          {/* Logo/Header */}
           <div className="login-header">
-            <div className="logo">
-              <span className="logo-icon">🏖️</span>
-              <div className="logo-text">
-                <h1>Sukhakarta</h1>
-                <p>Admin Panel</p>
-              </div>
-            </div>
+            <h1>Sukhakarta</h1>
+            <p>Admin Panel</p>
           </div>
 
-          {/* Welcome Text */}
-          <div className="welcome-text">
-            <h2>Welcome Back</h2>
-            <p>Sign in to access the admin dashboard</p>
-          </div>
-
-          {/* Login Form */}
           <form onSubmit={handleLogin} className="login-form">
             <div className="form-group">
-              <label htmlFor="email">Email Address</label>
+              <label>Email</label>
               <input
-                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@sukhakarta.com"
                 required
                 disabled={loading}
-                autoComplete="email"
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Password</label>
+              <label>Password</label>
               <input
-                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
                 required
                 disabled={loading}
-                autoComplete="current-password"
               />
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="error-message">
-                <span className="error-icon">⚠️</span>
-                <span>{error}</span>
-              </div>
-            )}
+            {error && <p className="error">{error}</p>}
 
-            {/* Login Button */}
-            <button type="submit" className="login-btn" disabled={loading}>
-              {loading ? (
-                <>
-                  <span className="spinner"></span>
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <span className="arrow">→</span>
-                </>
-              )}
+            <button type="submit" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
-          {/* Footer */}
-          <div className="login-footer">
-            <p className="footer-text">Authorized personnel only</p>
-            <a href="/" className="back-link">
-              ← Back to Website
-            </a>
-          </div>
+          <a href="/" className="back-link">← Back to website</a>
         </div>
       </div>
+    </div>
+  );
+}
+
 
       <style jsx>{`
         * {
