@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { redirect } from "next/navigation";
+
+export default function AdminIndex() {
+  redirect("/admin/login");
+}
 
 type Stats = {
   totalBookings: number;
