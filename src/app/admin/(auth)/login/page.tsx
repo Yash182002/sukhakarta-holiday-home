@@ -1,410 +1,129 @@
-        "use client";
-        
-        import { useState, type FormEvent } from "react";
-        import { supabase } from "@/lib/supabaseClient";
-        import { useRouter } from "next/navigation";
-        
-        export default function AdminLoginPage() {
-          const router = useRouter();
-        
-          const [email, setEmail] = useState("");
-          const [password, setPassword] = useState("");
-          const [loading, setLoading] = useState(false);
-          const [error, setError] = useState("");
-        
-          async function handleLogin(e: FormEvent) {
-            e.preventDefault();
-            setError("");
-            setLoading(true);
-        
-            try {
-              const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-              });
-        
-              if (error) {
-                setError(error.message);
-                return;
-              }
-        
-              if (data.session) {
-                router.push("/admin");
-              }
-            } catch {
-              setError("An unexpected error occurred");
-            } finally {
-              setLoading(false);
-            }
-          }
-        
-          return (
-                <>
-            <div className="login-page">
-              <div className="login-container">
-                <div className="login-card">
-                  <h1>Sukhakarta</h1>
-                  <p>Admin Panel</p>
-        
-                  <form onSubmit={handleLogin}>
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      disabled={loading}
-                      required
-                    />
-        
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={loading}
-                      required
-                    />
-        
-                    {error && <p className="error">{error}</p>}
-        
-                    <button type="submit" disabled={loading}>
-                      {loading ? "Signing in..." : "Sign In"}
-                    </button>
-                  </form>
-        
-                  <a href="/">← Back to website</a>
-                </div>
-              </div>
-            </div>
-        
+"use client";
+
+import { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+
+export default function AdminLoginPage() {
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleLogin() {
+    setError("");
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    await supabase.auth.getSession();
+router.replace("/admin");
+  }
+
+  return (
+    <main className="min-h-screen relative flex items-center justify-center bg-slate-950 overflow-hidden text-white">
+
+      {/* Animated background */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(249,115,22,0.12)_1px,transparent_1px)] bg-[length:50px_50px] animate-[gridMove_20s_linear_infinite]" />
+      </div>
+
+      {/* Login Card */}
+      <div className="relative w-full max-w-md mx-auto p-8 rounded-3xl bg-white/5 backdrop-blur-xl border border-orange-500/20 shadow-2xl">
+
+        <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-white via-orange-400 to-yellow-400 bg-clip-text text-transparent">
+          Admin Access
+        </h1>
+
+        <p className="text-center text-slate-400 mb-8">
+          Sukhakarta Holiday Home · Control Panel
+        </p>
+
+        {/* Email */}
+        <label className="block text-sm text-slate-400 mb-1">
+          Email
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="admin@sukhakarta.com"
+          className="input"
+        />
+
+        {/* Password */}
+        <label className="block text-sm text-slate-400 mt-4 mb-1">
+          Password
+        </label>
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="••••••••"
+          className="input"
+        />
+
+        {/* Error */}
+        {error && (
+          <p className="mt-4 text-sm text-red-400 text-center">
+            {error}
+          </p>
+        )}
+
+        {/* Login Button */}
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          className="w-full mt-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 transition-transform duration-300 hover:-translate-y-0.5 disabled:opacity-60"
+        >
+          {loading ? "Authenticating…" : "Login"}
+        </button>
+
+        <p className="mt-6 text-xs text-center text-slate-500">
+          Authorized personnel only
+        </p>
+      </div>
+
+      {/* Styles */}
       <style jsx>{`
-        * {
-          box-sizing: border-box;
+        @keyframes gridMove {
+          from { transform: translate(0,0); }
+          to { transform: translate(50px,50px); }
         }
 
-        .login-page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-          padding: 1rem;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .bg-gradient {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          overflow: hidden;
-          z-index: 0;
-        }
-
-        .orb {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(100px);
-          opacity: 0.3;
-          animation: float 20s ease-in-out infinite;
-        }
-
-        .orb-1 {
-          width: 500px;
-          height: 500px;
-          background: #f97316;
-          top: -200px;
-          right: -200px;
-        }
-
-        .orb-2 {
-          width: 400px;
-          height: 400px;
-          background: #0ea5e9;
-          bottom: -150px;
-          left: -150px;
-          animation-delay: 10s;
-        }
-
-        .orb-3 {
-          width: 350px;
-          height: 350px;
-          background: #22c55e;
-          top: 50%;
-          left: 50%;
-          animation-delay: 5s;
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translate(0, 0) scale(1);
-          }
-          33% {
-            transform: translate(100px, -100px) scale(1.1);
-          }
-          66% {
-            transform: translate(-100px, 100px) scale(0.9);
-          }
-        }
-
-        .login-container {
-          position: relative;
-          z-index: 1;
+        .input {
           width: 100%;
-          max-width: 450px;
-        }
-
-        .login-card {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          border-radius: 24px;
-          padding: 2.5rem;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-          animation: slideUp 0.6s ease-out;
-        }
-
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .login-header {
-          margin-bottom: 2rem;
-        }
-
-        .logo {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          justify-content: center;
-        }
-
-        .logo-icon {
-          font-size: 3rem;
-          animation: bounce 2s ease-in-out infinite;
-        }
-
-        @keyframes bounce {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-        }
-
-        .logo-text {
-          text-align: left;
-        }
-
-        .logo-text h1 {
-          font-size: 2rem;
-          font-weight: 800;
-          margin: 0;
-          background: linear-gradient(135deg, #fff, #f97316, #fbbf24);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          letter-spacing: -0.02em;
-        }
-
-        .logo-text p {
-          margin: 0;
-          font-size: 0.875rem;
-          color: #94a3b8;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-        }
-
-        .welcome-text {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-
-        .welcome-text h2 {
-          font-size: 1.75rem;
-          color: white;
-          margin: 0 0 0.5rem 0;
-        }
-
-        .welcome-text p {
-          color: #94a3b8;
-          margin: 0;
-          font-size: 0.95rem;
-        }
-
-        .login-form {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .form-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        label {
-          color: #cbd5e1;
-          font-weight: 500;
-          font-size: 0.95rem;
-        }
-
-        input {
-          width: 100%;
-          padding: 1rem;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(249, 115, 22, 0.3);
+          padding: 0.75rem 1rem;
           border-radius: 12px;
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(249,115,22,0.3);
           color: white;
-          font-size: 1rem;
-          transition: all 0.3s;
-        }
-
-        input:focus {
           outline: none;
-          border-color: #f97316;
-          background: rgba(255, 255, 255, 0.15);
-          box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+          transition: all 0.25s ease;
         }
 
-        input::placeholder {
+        .input:focus {
+          border-color: rgb(249,115,22);
+          box-shadow: 0 0 0 3px rgba(249,115,22,0.15);
+          background: rgba(255,255,255,0.12);
+        }
+
+        .input::placeholder {
           color: #64748b;
-        }
-
-        input:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .error-message {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 1rem;
-          background: rgba(239, 68, 68, 0.1);
-          border: 1px solid rgba(239, 68, 68, 0.3);
-          border-radius: 12px;
-          color: #fca5a5;
-          font-size: 0.95rem;
-        }
-
-        .error-icon {
-          font-size: 1.25rem;
-        }
-
-        .login-btn {
-          width: 100%;
-          padding: 1.125rem 2rem;
-          background: linear-gradient(135deg, #f97316, #ea580c);
-          border: none;
-          border-radius: 12px;
-          color: white;
-          font-size: 1.05rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s;
-          box-shadow: 0 10px 30px rgba(249, 115, 22, 0.3);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          margin-top: 0.5rem;
-        }
-
-        .login-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 15px 40px rgba(249, 115, 22, 0.5);
-        }
-
-        .login-btn:active:not(:disabled) {
-          transform: translateY(0);
-        }
-
-        .login-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        .spinner {
-          width: 18px;
-          height: 18px;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-top-color: white;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        .arrow {
-          transition: transform 0.3s;
-        }
-
-        .login-btn:hover:not(:disabled) .arrow {
-          transform: translateX(5px);
-        }
-
-        .login-footer {
-          margin-top: 2rem;
-          padding-top: 2rem;
-          border-top: 1px solid rgba(249, 115, 22, 0.2);
-          text-align: center;
-        }
-
-        .footer-text {
-          color: #64748b;
-          font-size: 0.85rem;
-          margin: 0 0 1rem 0;
-        }
-
-        .back-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #f97316;
-          text-decoration: none;
-          font-weight: 500;
-          font-size: 0.95rem;
-          transition: all 0.3s;
-        }
-
-        .back-link:hover {
-          gap: 0.75rem;
-          color: #fb923c;
-        }
-
-        @media (max-width: 480px) {
-          .login-card {
-            padding: 2rem 1.5rem;
-          }
-
-          .logo-icon {
-            font-size: 2.5rem;
-          }
-
-          .logo-text h1 {
-            font-size: 1.75rem;
-          }
-
-          .welcome-text h2 {
-            font-size: 1.5rem;
-          }
         }
       `}</style>
-    </>
+    </main>
   );
 }
