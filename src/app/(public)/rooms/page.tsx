@@ -10,7 +10,11 @@ type Room = {
   maxGuests: number;
   size: string;
   view: string;
-  images: string[];
+  images: {
+  id: string;
+  image_url: string;
+  sort_order: number;
+}[];
   amenities: string[];
   description: string;
   highlights: string[];
