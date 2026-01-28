@@ -7,7 +7,8 @@ export const metadata = {
     "Experience luxury at Sukhakarta Holiday Home in Alibag. Premium sea-view rooms, modern amenities, and unforgettable coastal experiences.",
 };
 
-export const revalidate = 60;
+// Enable revalidation every 10 seconds for fresh data
+export const revalidate = 10;
 
 export default async function Page() {
   const { data, error } = await supabase
@@ -16,7 +17,8 @@ export default async function Page() {
     .order("created_at", { ascending: true });
 
   if (error) {
-    throw new Error("Failed to load rooms");
+    console.error("Error loading rooms:", error);
+    return <HomeClient rooms={[]} />;
   }
 
   return <HomeClient rooms={data as Room[]} />;
