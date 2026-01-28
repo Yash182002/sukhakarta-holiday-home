@@ -247,6 +247,9 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
 
         .hero-content {
           max-width: 900px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;     
         }
 
         .hero h1 {
@@ -295,6 +298,9 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
+          width: fit-content !important;
+          margin: 0 auto;  
+          
         }
 
         .cta-button:hover {
