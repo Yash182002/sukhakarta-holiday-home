@@ -579,6 +579,8 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
           padding: 1.5rem 4rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
+          width: auto;               
+          max-width: 280px;  
           font-size: 1.2rem;
           font-weight: 700;
           text-decoration: none;
