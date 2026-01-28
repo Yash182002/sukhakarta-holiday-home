@@ -1,26 +1,10 @@
 "use client";
+import { useState } from 'react';
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-
-/* ============================
-   DB ROOM TYPE (MATCH SUPABASE)
-============================ */
-type DBRoom = {
-  id: string;
-  name: string;
-  base_price: number;
-  max_guests: number;
-  description: string | null;
-  amenities: string[] | null;
-};
-
-/* ============================
-   UI ROOM TYPE
-============================ */
 type Room = {
-  id: string;
+  id: number;
   name: string;
+  type: string;
   price: number;
   originalPrice: number;
   maxGuests: number;
@@ -33,75 +17,185 @@ type Room = {
 };
 
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [filterPrice, setFilterPrice] = useState("all");
+  const [filterPrice, setFilterPrice] = useState('all');
 
-  /* ============================
-     FETCH ROOMS FROM SUPABASE
-  ============================ */
-  useEffect(() => {
-    fetchRooms();
-  }, []);
-
-  async function fetchRooms() {
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("rooms")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      setLoading(false);
-      return;
+  const rooms = [
+    {
+      id: 1,
+      name: 'Standard Room',
+      type: 'standard',
+      price: 2500,
+      originalPrice: 3000,
+      maxGuests: 2,
+      size: '250 sq ft',
+      view: 'Garden View',
+      images: ['🛏️', '🪟', '🚿', '📺'],
+      amenities: [
+        'Air Conditioning',
+        'Free WiFi',
+        'LED TV',
+        'Hot Water',
+        'Room Service',
+        'Wardrobe',
+        'Work Desk',
+        'Complimentary Breakfast'
+      ],
+      description: 'Cozy and comfortable rooms perfect for couples or solo travelers. Enjoy modern amenities and a peaceful garden view.',
+      highlights: ['Best Value', 'Garden View', 'Free WiFi']
+    },
+    {
+      id: 2,
+      name: 'Deluxe Sea View',
+      type: 'deluxe',
+      price: 3500,
+      originalPrice: 4200,
+      maxGuests: 3,
+      size: '350 sq ft',
+      view: 'Sea View',
+      images: ['🌊', '🛏️', '🏖️', '🌅'],
+      amenities: [
+        'Air Conditioning',
+        'Free WiFi',
+        'Smart TV',
+        'Private Balcony',
+        'Sea View',
+        'Mini Fridge',
+        'Hot Water',
+        'Premium Toiletries',
+        'Room Service',
+        'Complimentary Breakfast'
+      ],
+      description: 'Spacious rooms with stunning sea views from your private balcony. Wake up to the sound of waves and breathtaking sunsets.',
+      highlights: ['Most Popular', 'Sea View', 'Private Balcony']
+    },
+    {
+      id: 3,
+      name: 'Premium Suite',
+      type: 'suite',
+      price: 5000,
+      originalPrice: 6000,
+      maxGuests: 4,
+      size: '500 sq ft',
+      view: 'Panoramic Sea View',
+      images: ['👑', '🌊', '🛋️', '🍾'],
+      amenities: [
+        'Air Conditioning',
+        'Free WiFi',
+        'Smart TV',
+        'Separate Living Area',
+        'Panoramic Sea View',
+        'Premium Furnishing',
+        'King Size Bed',
+        'Jacuzzi',
+        'Mini Bar',
+        'Hot Water',
+        'Luxury Toiletries',
+        '24/7 Room Service',
+        'Complimentary Breakfast',
+        'Welcome Drinks'
+      ],
+      description: 'Ultimate luxury with separate living space, premium furnishings, and panoramic ocean views. Perfect for families or special occasions.',
+      highlights: ['Luxury', 'Jacuzzi', 'Living Area']
+    },
+    {
+      id: 4,
+      name: 'Family Room',
+      type: 'family',
+      price: 4000,
+      originalPrice: 4800,
+      maxGuests: 5,
+      size: '450 sq ft',
+      view: 'Garden & Pool View',
+      images: ['👨‍👩‍👧‍👦', '🏊', '🛏️', '🎮'],
+      amenities: [
+        'Air Conditioning',
+        'Free WiFi',
+        'Two LED TVs',
+        'Two Beds',
+        'Pool View',
+        'Hot Water',
+        'Extra Space',
+        'Gaming Console',
+        'Mini Fridge',
+        'Room Service',
+        'Complimentary Breakfast',
+        'Kids Play Area Access'
+      ],
+      description: 'Spacious family room with pool view, perfect for families with children. Extra amenities to keep everyone entertained.',
+      highlights: ['Family Friendly', 'Pool View', 'Gaming Console']
+    },
+    {
+      id: 5,
+      name: 'Honeymoon Suite',
+      type: 'honeymoon',
+      price: 5500,
+      originalPrice: 6500,
+      maxGuests: 2,
+      size: '400 sq ft',
+      view: 'Private Beach View',
+      images: ['💑', '🌹', '🥂', '🌊'],
+      amenities: [
+        'Air Conditioning',
+        'Free WiFi',
+        'Smart TV',
+        'Romantic Decor',
+        'Private Beach Access',
+        'King Size Bed',
+        'Jacuzzi',
+        'Champagne on Arrival',
+        'Flower Decoration',
+        'Candlelight Dinner',
+        'Luxury Toiletries',
+        '24/7 Room Service',
+        'Late Checkout'
+      ],
+      description: 'Romantic suite designed for couples. Enjoy private beach access, romantic decor, and special honeymoon amenities.',
+      highlights: ['Romantic', 'Private Beach', 'Special Decor']
+    },
+    {
+      id: 6,
+      name: 'Executive Room',
+      type: 'executive',
+      price: 4200,
+      originalPrice: 5000,
+      maxGuests: 2,
+      size: '380 sq ft',
+      view: 'City & Sea View',
+      images: ['💼', '🖥️', '☕', '🌊'],
+      amenities: [
+        'Air Conditioning',
+        'High-Speed WiFi',
+        'Smart TV',
+        'Work Desk',
+        'Ergonomic Chair',
+        'Coffee Maker',
+        'Sea View',
+        'Hot Water',
+        'Premium Toiletries',
+        'Business Center Access',
+        'Room Service',
+        'Complimentary Breakfast',
+        'Express Laundry'
+      ],
+      description: 'Perfect for business travelers. Dedicated workspace, high-speed internet, and all business amenities you need.',
+      highlights: ['Business', 'Work Desk', 'High-Speed WiFi']
     }
-
-    const mappedRooms = (data as DBRoom[]).map(mapRoom);
-    setRooms(mappedRooms);
-    setLoading(false);
-  }
-
-  /* ============================
-     MAP DB → UI
-  ============================ */
-  function mapRoom(room: DBRoom): Room {
-    return {
-      id: room.id,
-      name: room.name,
-      price: room.base_price,
-      originalPrice: Math.round(room.base_price * 1.25),
-      maxGuests: room.max_guests,
-      size: "350 sq ft",
-      view: "Garden View",
-      images: ["🛏️", "🪟", "🚿", "📺"],
-      amenities: room.amenities || [],
-      description: room.description || "",
-      highlights: room.amenities?.slice(0, 3) || [],
-    };
-  }
-
-  /* ============================
-     FILTER LOGIC
-  ============================ */
-  const priceRanges = [
-    { id: "all", label: "All Rooms", min: 0, max: Infinity },
-    { id: "budget", label: "Under ₹3000", min: 0, max: 3000 },
-    { id: "mid", label: "₹3000 - ₹4500", min: 3000, max: 4500 },
-    { id: "luxury", label: "Above ₹4500", min: 4500, max: Infinity },
   ];
 
-  const filteredRooms = rooms.filter((room) => {
-    const range = priceRanges.find((r) => r.id === filterPrice)!;
-    return room.price >= range.min && room.price <= range.max;
+  const priceRanges = [
+    { id: 'all', label: 'All Rooms', min: 0, max: Infinity },
+    { id: 'budget', label: 'Under ₹3000', min: 0, max: 3000 },
+    { id: 'mid', label: '₹3000 - ₹4500', min: 3000, max: 4500 },
+    { id: 'luxury', label: 'Above ₹4500', min: 4500, max: Infinity }
+  ];
+
+  const filteredRooms = rooms.filter(room => {
+    const range = priceRanges.find(r => r.id === filterPrice);
+    return room.price >= range!.min && room.price <= range!.max;
   });
 
-  /* ============================
-     MODAL HANDLERS
-  ============================ */
   const openRoomDetails = (room: Room) => {
     setSelectedRoom(room);
     setActiveImageIndex(0);
@@ -113,113 +207,231 @@ export default function RoomsPage() {
   };
 
   const nextImage = () => {
-    if (!selectedRoom) return;
-    setActiveImageIndex((prev) =>
-      prev === selectedRoom.images.length - 1 ? 0 : prev + 1
-    );
+    if (selectedRoom) {
+      setActiveImageIndex((prev) => 
+        prev === selectedRoom.images.length - 1 ? 0 : prev + 1
+      );
+    }
   };
 
   const prevImage = () => {
-    if (!selectedRoom) return;
-    setActiveImageIndex((prev) =>
-      prev === 0 ? selectedRoom.images.length - 1 : prev - 1
-    );
+    if (selectedRoom) {
+      setActiveImageIndex((prev) => 
+        prev === 0 ? selectedRoom.images.length - 1 : prev - 1
+      );
+    }
   };
 
-  /* ============================
-     UI
-  ============================ */
   return (
     <div className="rooms-page">
-      {/* Hero */}
+      {/* Animated Background */}
+      <div className="bg-gradient">
+        <div className="gradient-orb orb-1"></div>
+        <div className="gradient-orb orb-2"></div>
+        <div className="gradient-orb orb-3"></div>
+      </div>
+
+      {/* Hero Section */}
       <div className="hero">
-        <h1>Our Rooms & Suites</h1>
-        <p>Choose your perfect coastal retreat</p>
+        <div className="hero-content">
+          <h1>Our Rooms & Suites</h1>
+          <p>Choose your perfect coastal retreat</p>
+        </div>
       </div>
 
-      {/* Filter */}
-      <div className="filter-bar">
-        {priceRanges.map((range) => (
-          <button
-            key={range.id}
-            className={filterPrice === range.id ? "active" : ""}
-            onClick={() => setFilterPrice(range.id)}
-          >
-            {range.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Loading */}
-      {loading && <p className="loading">Loading rooms...</p>}
-
-      {/* Rooms Grid */}
-      <div className="rooms-grid">
-        {filteredRooms.map((room) => (
-          <div
-            key={room.id}
-            className="room-card"
-            onClick={() => openRoomDetails(room)}
-          >
-            <div className="room-image">{room.images[0]}</div>
-
-            <h3>{room.name}</h3>
-
-            <p>{room.description.slice(0, 100)}...</p>
-
-            <div className="price">
-              <span className="old">₹{room.originalPrice}</span>
-              <span className="new">₹{room.price}</span>
-            </div>
-
-            <div className="amenities">
-              {room.amenities.slice(0, 3).map((a, i) => (
-                <span key={i}>✓ {a}</span>
-              ))}
-            </div>
+      <div className="container">
+        {/* Filter Section */}
+        <div className="filter-bar">
+          <h3>Filter by Price</h3>
+          <div className="filter-buttons">
+            {priceRanges.map((range) => (
+              <button
+                key={range.id}
+                className={`filter-btn ${filterPrice === range.id ? 'active' : ''}`}
+                onClick={() => setFilterPrice(range.id)}
+              >
+                {range.label}
+              </button>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Rooms Grid */}
+        <div className="rooms-grid">
+          {filteredRooms.map((room, idx) => (
+            <div
+              key={room.id}
+              className="room-card"
+              style={{ animationDelay: `${idx * 0.1}s` }}
+              onClick={() => openRoomDetails(room)}
+            >
+              {/* Room Image Gallery Preview */}
+              <div className="room-gallery-preview">
+                <div className="main-image">{room.images[0]}</div>
+                <div className="thumbnail-strip">
+                  {room.images.slice(1, 4).map((img, i) => (
+                    <div key={i} className="thumbnail">{img}</div>
+                  ))}
+                </div>
+                <div className="image-count">+{room.images.length} photos</div>
+              </div>
+
+              {/* Room Info */}
+              <div className="room-info">
+                <div className="room-header">
+                  <h3>{room.name}</h3>
+                  <div className="room-highlights">
+                    {room.highlights.slice(0, 2).map((h, i) => (
+                      <span key={i} className="highlight-badge">{h}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="room-meta">
+                  <div className="meta-item">
+                    <span className="icon">👥</span>
+                    <span>{room.maxGuests} Guests</span>
+                  </div>
+                  <div className="meta-item">
+                    <span className="icon">📏</span>
+                    <span>{room.size}</span>
+                  </div>
+                  <div className="meta-item">
+                    <span className="icon">🪟</span>
+                    <span>{room.view}</span>
+                  </div>
+                </div>
+
+                <p className="room-description">{room.description.substring(0, 100)}...</p>
+
+                <div className="amenities-preview">
+                  {room.amenities.slice(0, 4).map((amenity, i) => (
+                    <span key={i} className="amenity-tag">✓ {amenity}</span>
+                  ))}
+                  {room.amenities.length > 4 && (
+                    <span className="more-amenities">+{room.amenities.length - 4} more</span>
+                  )}
+                </div>
+
+                <div className="room-footer">
+                  <div className="pricing">
+                    <span className="original-price">₹{room.originalPrice}</span>
+                    <span className="current-price">₹{room.price}</span>
+                    <span className="price-label">/ night</span>
+                  </div>
+                  <button className="details-btn">View Details →</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filteredRooms.length === 0 && (
+          <div className="no-results">
+            <div className="no-results-icon">🔍</div>
+            <h3>No rooms found</h3>
+            <p>Try adjusting your filters</p>
+          </div>
+        )}
       </div>
 
-      {/* Empty */}
-      {!loading && filteredRooms.length === 0 && (
-        <p className="no-results">No rooms found</p>
-      )}
-
-      {/* MODAL */}
+      {/* Room Detail Modal */}
       {selectedRoom && (
         <div className="modal" onClick={closeRoomDetails}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="close" onClick={closeRoomDetails}>
-              ×
-            </button>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <button className="close-btn" onClick={closeRoomDetails}>×</button>
 
-            <h2>{selectedRoom.name}</h2>
-
+            {/* Image Gallery */}
             <div className="gallery">
-              <button onClick={prevImage}>‹</button>
-              <span>{selectedRoom.images[activeImageIndex]}</span>
-              <button onClick={nextImage}>›</button>
+              <div className="gallery-main">
+                <button className="gallery-nav prev" onClick={prevImage}>‹</button>
+                <div className="gallery-image">{selectedRoom.images[activeImageIndex]}</div>
+                <button className="gallery-nav next" onClick={nextImage}>›</button>
+                <div className="gallery-counter">
+                  {activeImageIndex + 1} / {selectedRoom.images.length}
+                </div>
+              </div>
+              <div className="gallery-thumbnails">
+                {selectedRoom.images.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className={`gallery-thumb ${idx === activeImageIndex ? 'active' : ''}`}
+                    onClick={() => setActiveImageIndex(idx)}
+                  >
+                    {img}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <p>{selectedRoom.description}</p>
+            {/* Room Details */}
+            <div className="modal-details">
+              <div className="modal-header">
+                <div>
+                  <h2>{selectedRoom.name}</h2>
+                  <div className="modal-highlights">
+                    {selectedRoom.highlights.map((h, i) => (
+                      <span key={i} className="highlight-pill">{h}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="modal-pricing">
+                  <span className="modal-original-price">₹{selectedRoom.originalPrice}</span>
+                  <span className="modal-current-price">₹{selectedRoom.price}</span>
+                  <span className="modal-price-label">per night</span>
+                </div>
+              </div>
 
-            <div className="amenities-grid">
-              {selectedRoom.amenities.map((a, i) => (
-                <div key={i}>✓ {a}</div>
-              ))}
+              <div className="modal-meta-grid">
+                <div className="modal-meta-item">
+                  <span className="meta-icon">👥</span>
+                  <div>
+                    <strong>Max Guests</strong>
+                    <p>{selectedRoom.maxGuests} People</p>
+                  </div>
+                </div>
+                <div className="modal-meta-item">
+                  <span className="meta-icon">📏</span>
+                  <div>
+                    <strong>Room Size</strong>
+                    <p>{selectedRoom.size}</p>
+                  </div>
+                </div>
+                <div className="modal-meta-item">
+                  <span className="meta-icon">🪟</span>
+                  <div>
+                    <strong>View</strong>
+                    <p>{selectedRoom.view}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-section">
+                <h3>Description</h3>
+                <p>{selectedRoom.description}</p>
+              </div>
+
+              <div className="modal-section">
+                <h3>Amenities</h3>
+                <div className="amenities-grid">
+                  {selectedRoom.amenities.map((amenity, i) => (
+                    <div key={i} className="amenity-item">
+                      <span className="check">✓</span>
+                      <span>{amenity}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <a href="/book" className="book-btn primary">Book Now</a>
+                <a href="/contact" className="book-btn secondary">Contact Us</a>
+              </div>
             </div>
-
-            <a href="/book" className="book-btn">
-              Book Now
-            </a>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
+       
       <style jsx>{`
         .rooms-page {
           min-height: 100vh;
