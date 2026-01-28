@@ -1,72 +1,129 @@
 "use client";
-import { useState } from 'react';
 
-type Room = {
-  id: number;
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+/* ============================
+   DB ROOM TYPE (MATCH SUPABASE)
+============================ */
+type DBRoom = {
+  id: string;
   name: string;
-  type: string;
+  base_price: number;
+  max_guests: number;
+  description: string | null;
+  amenities: string[] | null;
+  images: string[] | null;
+};
+
+/* ============================
+   UI ROOM TYPE
+============================ */
+type Room = {
+  id: string;
+  name: string;
   price: number;
   originalPrice: number;
   maxGuests: number;
   size: string;
   view: string;
-  images: {
-  id: string;
-  image_url: string;
-  sort_order: number;
-}[];
+  images: string[];
   amenities: string[];
   description: string;
   highlights: string[];
 };
 
 export default function RoomsPage() {
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [filterPrice, setFilterPrice] = useState('all');
+  const [filterPrice, setFilterPrice] = useState("all");
 
-  const [rooms, setRooms] = useState<Room[]>([]);
+  /* ============================
+     FETCH ROOMS FROM SUPABASE
+  ============================ */
+  useEffect(() => {
+    fetchRooms();
 
-useEffect(() => {
-  const fetchRooms = async () => {
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('public-rooms-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms'
+        },
+        (payload) => {
+          console.log('Room change detected:', payload);
+          fetchRooms();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function fetchRooms() {
+    setLoading(true);
+
     const { data, error } = await supabase
-      .from('rooms')
-      .select(`
-        *,
-        room_images (
-          id,
-          image_url,
-          sort_order
-        )
-      `)
-      .order('sort_order', { foreignTable: 'room_images', ascending: true });
+      .from("rooms")
+      .select("*")
+      .order("created_at", { ascending: true });
 
-    if (!error && data) {
-      setRooms(
-        data.map(room => ({
-          ...room,
-          images: room.room_images
-        }))
-      );
+    if (error) {
+      console.error(error);
+      setLoading(false);
+      return;
     }
-  };
 
-  fetchRooms();
-}, []);
+    const mappedRooms = (data as DBRoom[]).map(mapRoom);
+    setRooms(mappedRooms);
+    setLoading(false);
+  }
 
+  /* ============================
+     MAP DB → UI
+  ============================ */
+  function mapRoom(room: DBRoom): Room {
+    return {
+      id: room.id,
+      name: room.name,
+      price: room.base_price,
+      originalPrice: Math.round(room.base_price * 1.25),
+      maxGuests: room.max_guests,
+      size: "350 sq ft",
+      view: "Garden View",
+      images: room.images && room.images.length > 0 ? room.images : ['/placeholder-room.jpg'],
+      amenities: room.amenities || [],
+      description: room.description || "Beautiful room with modern amenities",
+      highlights: room.amenities?.slice(0, 3) || [],
+    };
+  }
 
+  /* ============================
+     FILTER LOGIC
+  ============================ */
   const priceRanges = [
-    { id: 'all', label: 'All Rooms', min: 0, max: Infinity },
-    { id: 'budget', label: 'Under ₹3000', min: 0, max: 3000 },
-    { id: 'mid', label: '₹3000 - ₹4500', min: 3000, max: 4500 },
-    { id: 'luxury', label: 'Above ₹4500', min: 4500, max: Infinity }
+    { id: "all", label: "All Rooms", min: 0, max: Infinity },
+    { id: "budget", label: "Under ₹3000", min: 0, max: 3000 },
+    { id: "mid", label: "₹3000 - ₹4500", min: 3000, max: 4500 },
+    { id: "luxury", label: "Above ₹4500", min: 4500, max: Infinity },
   ];
 
-  const filteredRooms = rooms.filter(room => {
-    const range = priceRanges.find(r => r.id === filterPrice);
-    return room.price >= range!.min && room.price <= range!.max;
+  const filteredRooms = rooms.filter((room) => {
+    const range = priceRanges.find((r) => r.id === filterPrice)!;
+    return room.price >= range.min && room.price <= range.max;
   });
 
+  /* ============================
+     MODAL HANDLERS
+  ============================ */
   const openRoomDetails = (room: Room) => {
     setSelectedRoom(room);
     setActiveImageIndex(0);
@@ -78,31 +135,25 @@ useEffect(() => {
   };
 
   const nextImage = () => {
-    if (selectedRoom) {
-      setActiveImageIndex((prev) => 
-        prev === selectedRoom.images.length - 1 ? 0 : prev + 1
-      );
-    }
+    if (!selectedRoom) return;
+    setActiveImageIndex((prev) =>
+      prev === selectedRoom.images.length - 1 ? 0 : prev + 1
+    );
   };
 
   const prevImage = () => {
-    if (selectedRoom) {
-      setActiveImageIndex((prev) => 
-        prev === 0 ? selectedRoom.images.length - 1 : prev - 1
-      );
-    }
+    if (!selectedRoom) return;
+    setActiveImageIndex((prev) =>
+      prev === 0 ? selectedRoom.images.length - 1 : prev - 1
+    );
   };
 
+  /* ============================
+     UI
+  ============================ */
   return (
     <div className="rooms-page">
-      {/* Animated Background */}
-      <div className="bg-gradient">
-        <div className="gradient-orb orb-1"></div>
-        <div className="gradient-orb orb-2"></div>
-        <div className="gradient-orb orb-3"></div>
-      </div>
-
-      {/* Hero Section */}
+      {/* Hero */}
       <div className="hero">
         <div className="hero-content">
           <h1>Our Rooms & Suites</h1>
@@ -110,15 +161,16 @@ useEffect(() => {
         </div>
       </div>
 
+      {/* Container */}
       <div className="container">
-        {/* Filter Section */}
+        {/* Filter */}
         <div className="filter-bar">
           <h3>Filter by Price</h3>
           <div className="filter-buttons">
             {priceRanges.map((range) => (
               <button
                 key={range.id}
-                className={`filter-btn ${filterPrice === range.id ? 'active' : ''}`}
+                className={`filter-btn ${filterPrice === range.id ? "active" : ""}`}
                 onClick={() => setFilterPrice(range.id)}
               >
                 {range.label}
@@ -127,128 +179,207 @@ useEffect(() => {
           </div>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="loading">
+            <div className="spinner"></div>
+            <p>Loading rooms...</p>
+          </div>
+        )}
+
         {/* Rooms Grid */}
-        <div className="rooms-grid">
-          {filteredRooms.map((room, idx) => (
-            <div
-              key={room.id}
-              className="room-card"
-              style={{ animationDelay: `${idx * 0.1}s` }}
-              onClick={() => openRoomDetails(room)}
-            >
-              {/* Room Image Gallery Preview */}
-              <div className="room-gallery-preview">
-                <div className="main-image">{room.images[0]}</div>
-                <div className="thumbnail-strip">
-                  {room.images.slice(1, 4).map((img, i) => (
-                    <div key={i} className="thumbnail">{img}</div>
-                  ))}
-                </div>
-                <div className="image-count">+{room.images.length} photos</div>
-              </div>
-
-              {/* Room Info */}
-              <div className="room-info">
-                <div className="room-header">
-                  <h3>{room.name}</h3>
-                  <div className="room-highlights">
-                    {room.highlights.slice(0, 2).map((h, i) => (
-                      <span key={i} className="highlight-badge">{h}</span>
-                    ))}
+        {!loading && (
+          <div className="rooms-grid">
+            {filteredRooms.map((room, idx) => (
+              <div
+                key={room.id}
+                className="room-card"
+                onClick={() => openRoomDetails(room)}
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="room-gallery-preview">
+                  <div className="main-image">
+                    <img 
+                      src={room.images[0]} 
+                      alt={room.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
                   </div>
-                </div>
-
-                <div className="room-meta">
-                  <div className="meta-item">
-                    <span className="icon">👥</span>
-                    <span>{room.maxGuests} Guests</span>
-                  </div>
-                  <div className="meta-item">
-                    <span className="icon">📏</span>
-                    <span>{room.size}</span>
-                  </div>
-                  <div className="meta-item">
-                    <span className="icon">🪟</span>
-                    <span>{room.view}</span>
-                  </div>
-                </div>
-
-                <p className="room-description">{room.description.substring(0, 100)}...</p>
-
-                <div className="amenities-preview">
-                  {room.amenities.slice(0, 4).map((amenity, i) => (
-                    <span key={i} className="amenity-tag">✓ {amenity}</span>
-                  ))}
-                  {room.amenities.length > 4 && (
-                    <span className="more-amenities">+{room.amenities.length - 4} more</span>
+                  {room.images.length > 1 && (
+                    <>
+                      <div className="thumbnail-strip">
+                        {room.images.slice(1, 4).map((img, i) => (
+                          <div key={i} className="thumbnail">
+                            <img 
+                              src={img} 
+                              alt={`${room.name} ${i + 2}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="image-count">
+                        📷 {room.images.length} photos
+                      </div>
+                    </>
                   )}
                 </div>
 
-                <div className="room-footer">
-                  <div className="pricing">
-                    <span className="original-price">₹{room.originalPrice}</span>
-                    <span className="current-price">₹{room.price}</span>
-                    <span className="price-label">/ night</span>
+                <div className="room-info">
+                  <div className="room-header">
+                    <h3>{room.name}</h3>
+                    <div className="room-highlights">
+                      {room.highlights.map((h, i) => (
+                        <span key={i} className="highlight-badge">
+                          {h}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <button className="details-btn">View Details →</button>
+
+                  <div className="room-meta">
+                    <span className="meta-item">
+                      <span className="icon">👥</span>
+                      <span>Up to {room.maxGuests} Guests</span>
+                    </span>
+                    <span className="meta-item">
+                      <span className="icon">📏</span>
+                      <span>{room.size}</span>
+                    </span>
+                    <span className="meta-item">
+                      <span className="icon">🪟</span>
+                      <span>{room.view}</span>
+                    </span>
+                  </div>
+
+                  <p className="room-description">{room.description}</p>
+
+                  <div className="amenities-preview">
+                    {room.amenities.slice(0, 4).map((amenity, i) => (
+                      <span key={i} className="amenity-tag">
+                        {amenity}
+                      </span>
+                    ))}
+                    {room.amenities.length > 4 && (
+                      <span className="more-amenities">
+                        +{room.amenities.length - 4} more
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="room-footer">
+                    <div className="pricing">
+                      <span className="original-price">₹{room.originalPrice}</span>
+                      <span className="current-price">₹{room.price}</span>
+                      <span className="price-label">per night</span>
+                    </div>
+                    <button className="details-btn">View Details →</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {filteredRooms.length === 0 && (
+        {/* Empty */}
+        {!loading && filteredRooms.length === 0 && (
           <div className="no-results">
-            <div className="no-results-icon">🔍</div>
+            <div className="no-results-icon">🏨</div>
             <h3>No rooms found</h3>
             <p>Try adjusting your filters</p>
           </div>
         )}
       </div>
 
-      {/* Room Detail Modal */}
+      {/* MODAL */}
       {selectedRoom && (
         <div className="modal" onClick={closeRoomDetails}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <button className="close-btn" onClick={closeRoomDetails}>×</button>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={closeRoomDetails}>
+              ×
+            </button>
 
-            {/* Image Gallery */}
+            {/* Gallery */}
             <div className="gallery">
               <div className="gallery-main">
-                <button className="gallery-nav prev" onClick={prevImage}>‹</button>
-                <div className="gallery-image">{selectedRoom.images[activeImageIndex]}</div>
-                <button className="gallery-nav next" onClick={nextImage}>›</button>
-                <div className="gallery-counter">
-                  {activeImageIndex + 1} / {selectedRoom.images.length}
+                <img 
+                  src={selectedRoom.images[activeImageIndex]} 
+                  alt={selectedRoom.name}
+                  className="gallery-image"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+                {selectedRoom.images.length > 1 && (
+                  <>
+                    <button onClick={prevImage} className="gallery-nav prev">
+                      ‹
+                    </button>
+                    <button onClick={nextImage} className="gallery-nav next">
+                      ›
+                    </button>
+                    <div className="gallery-counter">
+                      {activeImageIndex + 1} / {selectedRoom.images.length}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {selectedRoom.images.length > 1 && (
+                <div className="gallery-thumbnails">
+                  {selectedRoom.images.map((img, i) => (
+                    <div
+                      key={i}
+                      className={`gallery-thumb ${
+                        i === activeImageIndex ? "active" : ""
+                      }`}
+                      onClick={() => setActiveImageIndex(i)}
+                    >
+                      <img 
+                        src={img} 
+                        alt={`${selectedRoom.name} ${i + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="gallery-thumbnails">
-                {selectedRoom.images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    className={`gallery-thumb ${idx === activeImageIndex ? 'active' : ''}`}
-                    onClick={() => setActiveImageIndex(idx)}
-                  >
-                    {img}
-                  </div>
-                ))}
-              </div>
+              )}
             </div>
 
-            {/* Room Details */}
+            {/* Details */}
             <div className="modal-details">
               <div className="modal-header">
                 <div>
                   <h2>{selectedRoom.name}</h2>
                   <div className="modal-highlights">
                     {selectedRoom.highlights.map((h, i) => (
-                      <span key={i} className="highlight-pill">{h}</span>
+                      <span key={i} className="highlight-pill">
+                        {h}
+                      </span>
                     ))}
                   </div>
                 </div>
                 <div className="modal-pricing">
-                  <span className="modal-original-price">₹{selectedRoom.originalPrice}</span>
-                  <span className="modal-current-price">₹{selectedRoom.price}</span>
+                  <span className="modal-original-price">
+                    ₹{selectedRoom.originalPrice}
+                  </span>
+                  <span className="modal-current-price">
+                    ₹{selectedRoom.price}
+                  </span>
                   <span className="modal-price-label">per night</span>
                 </div>
               </div>
@@ -258,7 +389,7 @@ useEffect(() => {
                   <span className="meta-icon">👥</span>
                   <div>
                     <strong>Max Guests</strong>
-                    <p>{selectedRoom.maxGuests} People</p>
+                    <p>Up to {selectedRoom.maxGuests} people</p>
                   </div>
                 </div>
                 <div className="modal-meta-item">
@@ -295,14 +426,21 @@ useEffect(() => {
               </div>
 
               <div className="modal-actions">
-                <a href="/book" className="book-btn primary">Book Now</a>
-                <a href="/contact" className="book-btn secondary">Contact Us</a>
+                <a href="/book" className="book-btn primary">
+                  Book Now
+                </a>
+                <button
+                  onClick={closeRoomDetails}
+                  className="book-btn secondary"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
-       
+
       <style jsx>{`
         .rooms-page {
           min-height: 100vh;
@@ -310,62 +448,6 @@ useEffect(() => {
           color: #f8fafc;
           font-family: system-ui, -apple-system, sans-serif;
           position: relative;
-        }
-
-        .bg-gradient {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          overflow: hidden;
-          z-index: 0;
-        }
-
-        .gradient-orb {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(100px);
-          opacity: 0.3;
-          animation: float 15s ease-in-out infinite;
-        }
-
-        .orb-1 {
-          width: 600px;
-          height: 600px;
-          background: #f97316;
-          top: -200px;
-          right: -200px;
-        }
-
-        .orb-2 {
-          width: 500px;
-          height: 500px;
-          background: #0ea5e9;
-          bottom: -150px;
-          left: -150px;
-          animation-delay: 5s;
-        }
-
-        .orb-3 {
-          width: 400px;
-          height: 400px;
-          background: #22c55e;
-          top: 50%;
-          left: 50%;
-          animation-delay: 10s;
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translate(0, 0);
-          }
-          33% {
-            transform: translate(100px, -100px);
-          }
-          66% {
-            transform: translate(-100px, 100px);
-          }
         }
 
         .hero {
@@ -451,6 +533,30 @@ useEffect(() => {
           box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
         }
 
+        .loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          gap: 1rem;
+        }
+
+        .spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid rgba(249, 115, 22, 0.2);
+          border-top-color: #f97316;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
         .rooms-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -493,17 +599,8 @@ useEffect(() => {
         }
 
         .main-image {
-          font-size: 8rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
           height: 180px;
-          animation: pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
+          overflow: hidden;
         }
 
         .thumbnail-strip {
@@ -515,13 +612,12 @@ useEffect(() => {
         }
 
         .thumbnail {
+          height: 60px;
           background: rgba(15, 23, 42, 0.8);
           backdrop-filter: blur(5px);
           border: 1px solid rgba(249, 115, 22, 0.3);
           border-radius: 8px;
-          padding: 0.5rem;
-          text-align: center;
-          font-size: 1.5rem;
+          overflow: hidden;
         }
 
         .image-count {
@@ -764,14 +860,11 @@ useEffect(() => {
           height: 350px;
           background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(14, 165, 233, 0.1));
           border-radius: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          overflow: hidden;
           margin-bottom: 1rem;
         }
 
         .gallery-image {
-          font-size: 12rem;
           animation: imageZoom 0.3s ease-out;
         }
 
@@ -834,12 +927,11 @@ useEffect(() => {
         }
 
         .gallery-thumb {
+          aspect-ratio: 1;
           background: rgba(255, 255, 255, 0.05);
           border: 2px solid rgba(249, 115, 22, 0.2);
           border-radius: 12px;
-          padding: 0.75rem;
-          font-size: 2rem;
-          text-align: center;
+          overflow: hidden;
           cursor: pointer;
           transition: all 0.3s;
         }
@@ -1053,40 +1145,6 @@ useEffect(() => {
 
           .modal-actions {
             grid-template-columns: 1fr;
-          }
-
-          .gallery-image {
-            font-size: 8rem;
-          }
-
-          .filter-buttons {
-            flex-direction: column;
-          }
-
-          .filter-btn {
-            width: 100%;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .modal-content {
-            padding: 1rem;
-          }
-
-          .gallery {
-            padding: 1rem;
-          }
-
-          .gallery-main {
-            height: 250px;
-          }
-
-          .gallery-image {
-            font-size: 6rem;
-          }
-
-          .modal-details {
-            padding: 0 1rem 1rem;
           }
         }
       `}</style>
