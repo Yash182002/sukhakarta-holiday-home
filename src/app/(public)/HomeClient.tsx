@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 /* ---------- TYPES ---------- */
 export type Room = {
@@ -8,6 +10,9 @@ export type Room = {
   name: string;
   max_guests: number;
   base_price: number;
+  description?: string;
+  images?: string[];
+  amenities?: string[];
 };
 
 /* ---------- PROPS ---------- */
@@ -16,7 +21,40 @@ interface HomeClientProps {
 }
 
 /* ---------- COMPONENT ---------- */
-export default function HomeClient({ rooms }: HomeClientProps) {
+export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
+  const [rooms, setRooms] = useState<Room[]>(initialRooms);
+
+  useEffect(() => {
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('home-rooms-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms'
+        },
+        async () => {
+          console.log('Room change detected on homepage');
+          // Fetch updated rooms
+          const { data } = await supabase
+            .from('rooms')
+            .select('*')
+            .order('created_at', { ascending: true });
+          
+          if (data) {
+            setRooms(data);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const features = [
     { icon: '🏖️', title: 'Beach Access', description: 'Minutes from pristine beaches' },
     { icon: '🍽️', title: 'Fine Dining', description: 'Authentic coastal cuisine' },
@@ -74,15 +112,40 @@ export default function HomeClient({ rooms }: HomeClientProps) {
           <div className="rooms-grid">
             {rooms.map((room, idx) => (
               <article key={room.id} className="room-card" style={{ animationDelay: `${idx * 0.1}s` }}>
-                <div className="room-icon">🏨</div>
+                {room.images && room.images.length > 0 ? (
+                  <div className="room-image-container">
+                    <img 
+                      src={room.images[0]} 
+                      alt={room.name}
+                      className="room-image"
+                    />
+                    {room.images.length > 1 && (
+                      <div className="image-badge">
+                        📷 {room.images.length} photos
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="room-icon">🏨</div>
+                )}
                 <div className="room-content">
                   <h3>{room.name}</h3>
+                  {room.description && (
+                    <p className="room-description">{room.description.slice(0, 100)}...</p>
+                  )}
                   <div className="room-meta">
                     <span className="meta-item">
                       <span className="icon">👥</span>
                       <span>Max {room.max_guests} Guests</span>
                     </span>
                   </div>
+                  {room.amenities && room.amenities.length > 0 && (
+                    <div className="amenities-preview">
+                      {room.amenities.slice(0, 3).map((amenity, i) => (
+                        <span key={i} className="amenity-tag">✓ {amenity}</span>
+                      ))}
+                    </div>
+                  )}
                   <div className="room-footer">
                     <div className="pricing">
                       <span className="price">₹{room.base_price}</span>
@@ -221,7 +284,7 @@ export default function HomeClient({ rooms }: HomeClientProps) {
           animation: fadeInUp 0.8s ease-out 0.4s both;
         }
 
-        .hero-btn {
+        .cta-button {
           padding: 1.2rem 3rem;
           border-radius: 50px;
           font-size: 1.1rem;
@@ -229,28 +292,14 @@ export default function HomeClient({ rooms }: HomeClientProps) {
           text-decoration: none;
           transition: all 0.3s;
           display: inline-block;
-        }
-
-        .hero-btn.primary {
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
         }
 
-        .hero-btn.primary:hover {
+        .cta-button:hover {
           transform: translateY(-5px);
           box-shadow: 0 15px 40px rgba(249, 115, 22, 0.6);
-        }
-
-        .hero-btn.secondary {
-          background: transparent;
-          color: #f97316;
-          border: 2px solid #f97316;
-        }
-
-        .hero-btn.secondary:hover {
-          background: rgba(249, 115, 22, 0.1);
-          transform: translateY(-5px);
         }
 
         .features-section, .rooms-section, .cta-section {
@@ -368,6 +417,34 @@ export default function HomeClient({ rooms }: HomeClientProps) {
           box-shadow: 0 25px 60px rgba(249, 115, 22, 0.3);
         }
 
+        .room-image-container {
+          position: relative;
+          height: 250px;
+          overflow: hidden;
+        }
+
+        .room-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.4s;
+        }
+
+        .room-card:hover .room-image {
+          transform: scale(1.1);
+        }
+
+        .image-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: rgba(15, 23, 42, 0.9);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.85rem;
+          backdrop-filter: blur(10px);
+        }
+
         .room-icon {
           font-size: 5rem;
           text-align: center;
@@ -387,8 +464,14 @@ export default function HomeClient({ rooms }: HomeClientProps) {
 
         .room-content h3 {
           font-size: 1.8rem;
-          margin-bottom: 1rem;
+          margin-bottom: 0.5rem;
           color: #f8fafc;
+        }
+
+        .room-description {
+          color: #94a3b8;
+          margin-bottom: 1rem;
+          line-height: 1.5;
         }
 
         .room-meta {
@@ -406,6 +489,22 @@ export default function HomeClient({ rooms }: HomeClientProps) {
 
         .meta-item .icon {
           font-size: 1.2rem;
+        }
+
+        .amenities-preview {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .amenity-tag {
+          padding: 0.4rem 0.8rem;
+          background: rgba(249, 115, 22, 0.1);
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          border-radius: 8px;
+          font-size: 0.85rem;
+          color: #f97316;
         }
 
         .room-footer {
@@ -504,7 +603,7 @@ export default function HomeClient({ rooms }: HomeClientProps) {
             align-items: center;
           }
 
-          .hero-btn {
+          .cta-button {
             width: 100%;
             max-width: 300px;
           }
