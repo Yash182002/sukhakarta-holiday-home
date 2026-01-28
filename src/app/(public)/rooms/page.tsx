@@ -25,168 +25,35 @@ export default function RoomsPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [filterPrice, setFilterPrice] = useState('all');
 
-  const rooms = [
-    {
-      id: 1,
-      name: 'Standard Room',
-      type: 'standard',
-      price: 2500,
-      originalPrice: 3000,
-      maxGuests: 2,
-      size: '250 sq ft',
-      view: 'Garden View',
-      images: ['🛏️', '🪟', '🚿', '📺'],
-      amenities: [
-        'Air Conditioning',
-        'Free WiFi',
-        'LED TV',
-        'Hot Water',
-        'Room Service',
-        'Wardrobe',
-        'Work Desk',
-        'Complimentary Breakfast'
-      ],
-      description: 'Cozy and comfortable rooms perfect for couples or solo travelers. Enjoy modern amenities and a peaceful garden view.',
-      highlights: ['Best Value', 'Garden View', 'Free WiFi']
-    },
-    {
-      id: 2,
-      name: 'Deluxe Sea View',
-      type: 'deluxe',
-      price: 3500,
-      originalPrice: 4200,
-      maxGuests: 3,
-      size: '350 sq ft',
-      view: 'Sea View',
-      images: ['🌊', '🛏️', '🏖️', '🌅'],
-      amenities: [
-        'Air Conditioning',
-        'Free WiFi',
-        'Smart TV',
-        'Private Balcony',
-        'Sea View',
-        'Mini Fridge',
-        'Hot Water',
-        'Premium Toiletries',
-        'Room Service',
-        'Complimentary Breakfast'
-      ],
-      description: 'Spacious rooms with stunning sea views from your private balcony. Wake up to the sound of waves and breathtaking sunsets.',
-      highlights: ['Most Popular', 'Sea View', 'Private Balcony']
-    },
-    {
-      id: 3,
-      name: 'Premium Suite',
-      type: 'suite',
-      price: 5000,
-      originalPrice: 6000,
-      maxGuests: 4,
-      size: '500 sq ft',
-      view: 'Panoramic Sea View',
-      images: ['👑', '🌊', '🛋️', '🍾'],
-      amenities: [
-        'Air Conditioning',
-        'Free WiFi',
-        'Smart TV',
-        'Separate Living Area',
-        'Panoramic Sea View',
-        'Premium Furnishing',
-        'King Size Bed',
-        'Jacuzzi',
-        'Mini Bar',
-        'Hot Water',
-        'Luxury Toiletries',
-        '24/7 Room Service',
-        'Complimentary Breakfast',
-        'Welcome Drinks'
-      ],
-      description: 'Ultimate luxury with separate living space, premium furnishings, and panoramic ocean views. Perfect for families or special occasions.',
-      highlights: ['Luxury', 'Jacuzzi', 'Living Area']
-    },
-    {
-      id: 4,
-      name: 'Family Room',
-      type: 'family',
-      price: 4000,
-      originalPrice: 4800,
-      maxGuests: 5,
-      size: '450 sq ft',
-      view: 'Garden & Pool View',
-      images: ['👨‍👩‍👧‍👦', '🏊', '🛏️', '🎮'],
-      amenities: [
-        'Air Conditioning',
-        'Free WiFi',
-        'Two LED TVs',
-        'Two Beds',
-        'Pool View',
-        'Hot Water',
-        'Extra Space',
-        'Gaming Console',
-        'Mini Fridge',
-        'Room Service',
-        'Complimentary Breakfast',
-        'Kids Play Area Access'
-      ],
-      description: 'Spacious family room with pool view, perfect for families with children. Extra amenities to keep everyone entertained.',
-      highlights: ['Family Friendly', 'Pool View', 'Gaming Console']
-    },
-    {
-      id: 5,
-      name: 'Honeymoon Suite',
-      type: 'honeymoon',
-      price: 5500,
-      originalPrice: 6500,
-      maxGuests: 2,
-      size: '400 sq ft',
-      view: 'Private Beach View',
-      images: ['💑', '🌹', '🥂', '🌊'],
-      amenities: [
-        'Air Conditioning',
-        'Free WiFi',
-        'Smart TV',
-        'Romantic Decor',
-        'Private Beach Access',
-        'King Size Bed',
-        'Jacuzzi',
-        'Champagne on Arrival',
-        'Flower Decoration',
-        'Candlelight Dinner',
-        'Luxury Toiletries',
-        '24/7 Room Service',
-        'Late Checkout'
-      ],
-      description: 'Romantic suite designed for couples. Enjoy private beach access, romantic decor, and special honeymoon amenities.',
-      highlights: ['Romantic', 'Private Beach', 'Special Decor']
-    },
-    {
-      id: 6,
-      name: 'Executive Room',
-      type: 'executive',
-      price: 4200,
-      originalPrice: 5000,
-      maxGuests: 2,
-      size: '380 sq ft',
-      view: 'City & Sea View',
-      images: ['💼', '🖥️', '☕', '🌊'],
-      amenities: [
-        'Air Conditioning',
-        'High-Speed WiFi',
-        'Smart TV',
-        'Work Desk',
-        'Ergonomic Chair',
-        'Coffee Maker',
-        'Sea View',
-        'Hot Water',
-        'Premium Toiletries',
-        'Business Center Access',
-        'Room Service',
-        'Complimentary Breakfast',
-        'Express Laundry'
-      ],
-      description: 'Perfect for business travelers. Dedicated workspace, high-speed internet, and all business amenities you need.',
-      highlights: ['Business', 'Work Desk', 'High-Speed WiFi']
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+useEffect(() => {
+  const fetchRooms = async () => {
+    const { data, error } = await supabase
+      .from('rooms')
+      .select(`
+        *,
+        room_images (
+          id,
+          image_url,
+          sort_order
+        )
+      `)
+      .order('sort_order', { foreignTable: 'room_images', ascending: true });
+
+    if (!error && data) {
+      setRooms(
+        data.map(room => ({
+          ...room,
+          images: room.room_images
+        }))
+      );
     }
-  ];
+  };
+
+  fetchRooms();
+}, []);
+
 
   const priceRanges = [
     { id: 'all', label: 'All Rooms', min: 0, max: Infinity },
