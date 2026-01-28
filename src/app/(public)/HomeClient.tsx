@@ -168,7 +168,7 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
           <div className="cta-content">
             <h2>Ready for Your Dream Vacation?</h2>
             <p>Book now and experience the best of coastal living</p>
-            <Link href="/book" className="cta-btn">
+            <Link href="/book" className="cta-button">
               Reserve Your Stay
             </Link>
           </div>
