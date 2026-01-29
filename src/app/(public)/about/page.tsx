@@ -9,7 +9,11 @@ type ContentSection = {
   section_key: string;
   section_title: string | null;
   section_content: string | null;
-  section_data: any | null;
+  section_data: {
+    items?: any[];
+    members?: any[];
+    stats?: any[];
+  } | null;
   images: string[];
   display_order: number;
   is_active: boolean;
@@ -60,9 +64,9 @@ export default function AboutPage() {
   const valuesSection = sections.find(s => s.section_key === 'values');
   const teamSection = sections.find(s => s.section_key === 'team');
 
-  const stats = statsSection?.data?.items || [];
-  const values = valuesSection?.data?.items || [];
-  const team = teamSection?.data?.members || [];
+  const stats = statsSection?.section_data?.items || [];
+  const values = valuesSection?.section_data?.items || [];
+  const team = teamSection?.section_data?.members || [];
 
   if (loading) {
     return (
