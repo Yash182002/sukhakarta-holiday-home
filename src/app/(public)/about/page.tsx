@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
+/* =========================
+   Types
+========================= */
 type ContentSection = {
   id: string;
-  page: 'home' | 'about';
+  page: "home" | "about";
   section_key: string;
   section_title: string | null;
   section_content: string | null;
@@ -19,60 +22,76 @@ type ContentSection = {
   is_active: boolean;
 };
 
+/* =========================
+   Page
+========================= */
 export default function AboutPage() {
   const [sections, setSections] = useState<ContentSection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('story');
 
+  /* =========================
+     Load content
+  ========================= */
   useEffect(() => {
     loadSections();
 
-    // Real-time subscription
-    const subscription = supabase
-      .channel('about-content-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'content_sections'
-      }, loadSections)
+    const channel = supabase
+      .channel("about-content-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "content_sections",
+        },
+        () => loadSections()
+      )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, []);
 
   async function loadSections() {
     const { data, error } = await supabase
-      .from('content_sections')
-      .select('*')
-      .eq('page', 'about')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true });
+      .from("content_sections")
+      .select("*")
+      .eq("page", "about")
+      .eq("is_active", true)
+      .order("display_order", { ascending: true });
 
-    if (error) {
-      console.error('Error loading sections:', error);
-    } else if (data) {
+    if (!error && data) {
       setSections(data);
+    } else {
+      console.error("Error loading about sections:", error);
     }
+
     setLoading(false);
   }
 
-  const heroSection = sections.find(s => s.section_key === 'hero');
-  const storySection = sections.find(s => s.section_key === 'story');
-  const statsSection = sections.find(s => s.section_key === 'stats');
-  const valuesSection = sections.find(s => s.section_key === 'values');
-  const teamSection = sections.find(s => s.section_key === 'team');
+  /* =========================
+     Section helpers
+  ========================= */
+  const heroSection = sections.find((s) => s.section_key === "hero");
+  const storySection = sections.find((s) => s.section_key === "story");
+  const statsSection = sections.find((s) => s.section_key === "stats");
+  const valuesSection = sections.find((s) => s.section_key === "values");
+  const teamSection = sections.find((s) => s.section_key === "team");
 
-  const stats = statsSection?.section_data?.items || [];
+  const stats = statsSection?.section_data?.stats || [];
   const values = valuesSection?.section_data?.items || [];
   const team = teamSection?.section_data?.members || [];
 
+  /* =========================
+     Loading state
+  ========================= */
   if (loading) {
     return (
       <div className="loading-screen">
         <div className="spinner"></div>
         <p>Loading...</p>
+
         <style jsx>{`
           .loading-screen {
             min-height: 100vh;
@@ -85,133 +104,150 @@ export default function AboutPage() {
             gap: 1rem;
           }
           .spinner {
-            width: 50px;
-            height: 50px;
+            width: 48px;
+            height: 48px;
             border: 4px solid rgba(249, 115, 22, 0.2);
             border-top-color: #f97316;
             border-radius: 50%;
             animation: spin 1s linear infinite;
           }
           @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+              transform: rotate(360deg);
+            }
           }
         `}</style>
       </div>
     );
   }
 
+  /* =========================
+     Render
+  ========================= */
   return (
     <div className="about-page">
-      {/* Animated Particles Background */}
-      <div className="particles">
-        {[...Array(20)].map((_, i) => (
-          <div key={i} className="particle" style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 5}s`,
-            animationDuration: `${5 + Math.random() * 10}s`
-          }}></div>
-        ))}
-      </div>
-
-      {/* Hero Section */}
-      <div className="hero">
-        <div className="hero-overlay"></div>
+      {/* ================= HERO ================= */}
+      <section className="hero">
+        <div className="hero-overlay" />
         <div className="hero-content">
-          <h1>{heroSection?.title || 'Our Story'}</h1>
-          <p>{heroSection?.subtitle || 'Creating Unforgettable Memories'}</p>
+          <h1>{heroSection?.section_title || "Our Story"}</h1>
+          <p>
+            {heroSection?.section_content ||
+              "Creating Unforgettable Memories"}
+          </p>
         </div>
-      </div>
+      </section>
 
-      {/* Stats Section */}
+      {/* ================= STATS ================= */}
       {stats.length > 0 && (
-        <div className="stats-section">
-          <div className="container">
-            <div className="stats-grid">
-              {stats.map((stat: any, idx: number) => (
-                <div key={idx} className="stat-card" style={{ animationDelay: `${idx * 0.1}s` }}>
-                  <div className="stat-icon">{stat.icon}</div>
-                  <div className="stat-value">{stat.value}</div>
-                  <div className="stat-label">{stat.label}</div>
-                </div>
-              ))}
-            </div>
+        <section className="stats-section">
+          <div className="container stats-grid">
+            {stats.map((stat: any, i: number) => (
+              <div key={i} className="stat-card">
+                <div className="stat-icon">{stat.icon}</div>
+                <div className="stat-value">{stat.value}</div>
+                <div className="stat-label">{stat.label}</div>
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Main Content */}
       <div className="container">
-        {/* Story Section */}
+        {/* ================= STORY ================= */}
         {storySection && (
-          <div className="content-panel">
-            <div className="content-grid">
-              <div className="content-text">
-                <h2>{storySection.title}</h2>
-                {storySection.content.split('\n\n').map((para, i) => (
-                  <p key={i}>{para}</p>
+          <section className="story-section">
+            <h2>{storySection.section_title}</h2>
+
+            {storySection.section_content
+              ?.split("\n\n")
+              .map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+
+            {storySection.images?.length > 0 && (
+              <div className="story-images">
+                {storySection.images.map((img, i) => (
+                  <img key={i} src={img} alt={`Story ${i + 1}`} />
                 ))}
               </div>
-              {storySection.images && storySection.images.length > 0 && (
-                <div className="content-visual">
-                  {storySection.images.map((img, i) => (
-                    <div key={i} className="visual-card">
-                      <img src={img} alt={`Story ${i + 1}`} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </section>
         )}
 
-        {/* Values Section */}
+        {/* ================= VALUES ================= */}
         {values.length > 0 && (
-          <div className="values-section">
-            <h2 className="section-title">{valuesSection?.title || 'Our Values'}</h2>
-            {valuesSection?.subtitle && (
-              <p className="section-subtitle">{valuesSection.subtitle}</p>
+          <section className="values-section">
+            <h2>
+              {valuesSection?.section_title || "Our Values"}
+            </h2>
+
+            {valuesSection?.section_content && (
+              <p className="section-subtitle">
+                {valuesSection.section_content}
+              </p>
             )}
+
             <div className="values-grid">
-              {values.map((value: any, idx: number) => (
-                <div key={idx} className="value-card" style={{ animationDelay: `${idx * 0.1}s` }}>
+              {values.map((value: any, i: number) => (
+                <div key={i} className="value-card">
                   <div className="value-icon">{value.icon}</div>
                   <h3>{value.title}</h3>
                   <p>{value.description}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Team Section */}
+        {/* ================= TEAM ================= */}
         {team.length > 0 && (
-          <div className="team-section">
-            <h2 className="section-title">{teamSection?.title || 'Meet Our Team'}</h2>
-            {teamSection?.subtitle && (
-              <p className="section-subtitle">{teamSection.subtitle}</p>
+          <section className="team-section">
+            <h2>
+              {teamSection?.section_title || "Meet Our Team"}
+            </h2>
+
+            {teamSection?.section_content && (
+              <p className="section-subtitle">
+                {teamSection.section_content}
+              </p>
             )}
+
             <div className="team-grid">
-              {team.map((member: any, idx: number) => (
-                <div key={idx} className="team-card" style={{ animationDelay: `${idx * 0.1}s` }}>
-                  <div className="team-avatar">{member.icon}</div>
+              {team.map((member: any, i: number) => (
+                <div key={i} className="team-card">
+                  <div className="team-avatar">
+                    {member.icon}
+                  </div>
                   <h3>{member.name}</h3>
                   <p>{member.role}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        {/* CTA Section */}
-        <div className="cta-section">
+        {/* ================= CTA ================= */}
+        <section className="cta-section">
           <h2>Experience Sukhakarta</h2>
-          <p>Join our family of happy guests and create your own unforgettable memories</p>
+          <p>
+            Join our family of happy guests and create your own
+            unforgettable memories.
+          </p>
           <div className="cta-buttons">
-            <a href="/book" className="cta-btn primary">Book Your Stay</a>
-            <a href="/contact" className="cta-btn secondary">Contact Us</a>
+            <a href="/book" className="cta-btn primary">
+              Book Your Stay
+            </a>
+            <a href="/contact" className="cta-btn secondary">
+              Contact Us
+            </a>
           </div>
-        </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
 
       <style jsx>{`
         .about-page {
