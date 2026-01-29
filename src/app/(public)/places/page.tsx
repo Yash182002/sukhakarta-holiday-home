@@ -1,124 +1,109 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 type Place = {
-  id: number;
+  id: string;
   name: string;
   category: string;
   distance: string;
   time: string;
   description: string;
-  image: string;
+  images: string[];
   rating: number;
   highlights: string[];
+  location_url?: string;
 };
+
+const CATEGORIES = [
+  { id: 'all', name: 'All Places', icon: '🗺️' },
+  { id: 'beach', name: 'Beaches', icon: '🏖️' },
+  { id: 'historical', name: 'Historical', icon: '🏰' },
+  { id: 'spiritual', name: 'Spiritual', icon: '🛕' },
+  { id: 'adventure', name: 'Adventure', icon: '🎯' },
+  { id: 'nature', name: 'Nature', icon: '🌳' }
+];
 
 export default function PlacesToVisit() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const places = [
-    {
-      id: 1,
-      name: 'Alibag Beach',
-      category: 'beach',
-      distance: '3 km',
-      time: '10 min',
-      description: 'The main beach of Alibag, perfect for evening walks, water sports, and watching stunning sunsets.',
-      image: '🏖️',
-      rating: 4.5,
-      highlights: ['Sunset Views', 'Water Sports', 'Horse Riding', 'Street Food']
-    },
-    {
-      id: 2,
-      name: 'Kolaba Fort',
-      category: 'historical',
-      distance: '4 km',
-      time: '15 min',
-      description: 'Ancient sea fort accessible during low tide. Built in 1662, features temples and stunning sea views.',
-      image: '🏰',
-      rating: 4.7,
-      highlights: ['Historical Site', 'Low Tide Walk', 'Photography', 'Temple Visit']
-    },
-    {
-      id: 3,
-      name: 'Kashid Beach',
-      category: 'beach',
-      distance: '30 km',
-      time: '45 min',
-      description: 'Pristine white sand beach with crystal clear waters, perfect for swimming and relaxation.',
-      image: '🌊',
-      rating: 4.8,
-      highlights: ['White Sand', 'Clean Beach', 'Swimming', 'Water Activities']
-    },
-    {
-      id: 4,
-      name: 'Murud-Janjira Fort',
-      category: 'historical',
-      distance: '45 km',
-      time: '1 hour',
-      description: 'Unconquered island fort with impressive architecture and rich history from the 15th century.',
-      image: '🏛️',
-      rating: 4.6,
-      highlights: ['Island Fort', 'Boat Ride', 'History', 'Architecture']
-    },
-    {
-      id: 5,
-      name: 'Kihim Beach',
-      category: 'beach',
-      distance: '12 km',
-      time: '25 min',
-      description: 'Peaceful beach known for bird watching and beautiful flora, ideal for nature lovers.',
-      image: '🦜',
-      rating: 4.4,
-      highlights: ['Bird Watching', 'Nature Trails', 'Quiet Beach', 'Photography']
-    },
-    {
-      id: 6,
-      name: 'Kanakeshwar Temple',
-      category: 'spiritual',
-      distance: '15 km',
-      time: '30 min',
-      description: 'Ancient hilltop temple with panoramic views of the Arabian Sea and Sahyadri mountains.',
-      image: '🛕',
-      rating: 4.5,
-      highlights: ['Hilltop Temple', 'Panoramic Views', 'Trekking', 'Spiritual']
-    },
-    {
-      id: 7,
-      name: 'Birla Temple',
-      category: 'spiritual',
-      distance: '8 km',
-      time: '20 min',
-      description: 'Modern temple complex with beautiful architecture and serene atmosphere.',
-      image: '🕉️',
-      rating: 4.3,
-      highlights: ['Modern Architecture', 'Peaceful', 'Well Maintained', 'Gardens']
-    },
-    {
-      id: 8,
-      name: 'Mandwa Beach',
-      category: 'beach',
-      distance: '18 km',
-      time: '35 min',
-      description: 'Popular beach destination with water sports, shacks, and stunning sunset views.',
-      image: '🏄',
-      rating: 4.6,
-      highlights: ['Water Sports', 'Beach Shacks', 'Sunset', 'Parasailing']
+  useEffect(() => {
+    loadPlaces();
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('public-places-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'places'
+        },
+        (payload) => {
+          console.log('Place change detected:', payload);
+          loadPlaces();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function loadPlaces() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('places')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading places:', error);
+    } else if (data) {
+      setPlaces(data);
     }
-  ];
-
-  const categories = [
-    { id: 'all', name: 'All Places', icon: '🗺️' },
-    { id: 'beach', name: 'Beaches', icon: '🏖️' },
-    { id: 'historical', name: 'Historical', icon: '🏰' },
-    { id: 'spiritual', name: 'Spiritual', icon: '🛕' }
-  ];
+    setLoading(false);
+  }
 
   const filteredPlaces = activeFilter === 'all' 
     ? places 
     : places.filter(p => p.category === activeFilter);
+
+  const openPlaceDetails = (place: Place) => {
+    setSelectedPlace(place);
+    setActiveImageIndex(0);
+  };
+
+  const closePlaceDetails = () => {
+    setSelectedPlace(null);
+    setActiveImageIndex(0);
+  };
+
+  const nextImage = () => {
+    if (!selectedPlace || !selectedPlace.images) return;
+    setActiveImageIndex((prev) =>
+      prev === selectedPlace.images.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const prevImage = () => {
+    if (!selectedPlace || !selectedPlace.images) return;
+    setActiveImageIndex((prev) =>
+      prev === 0 ? selectedPlace.images.length - 1 : prev - 1
+    );
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const cat = CATEGORIES.find(c => c.id === category);
+    return cat ? cat.icon : '📍';
+  };
 
   return (
     <div className="places-page">
@@ -134,7 +119,7 @@ export default function PlacesToVisit() {
       {/* Filter Section */}
       <div className="container">
         <div className="filter-section">
-          {categories.map((cat, idx) => (
+          {CATEGORIES.map((cat, idx) => (
             <button
               key={cat.id}
               className={`filter-btn ${activeFilter === cat.id ? 'active' : ''}`}
@@ -147,78 +132,168 @@ export default function PlacesToVisit() {
           ))}
         </div>
 
-        {/* Places Grid */}
-        <div className="places-grid">
-          {filteredPlaces.map((place, idx) => (
-            <div
-              key={place.id}
-              className="place-card"
-              onClick={() => setSelectedPlace(place)}
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            >
-              <div className="place-icon">{place.image}</div>
-              <div className="place-content">
-                <h3>{place.name}</h3>
-                <div className="place-meta">
-                  <span className="distance">📍 {place.distance}</span>
-                  <span className="time">⏱️ {place.time}</span>
-                </div>
-                <p className="description">{place.description}</p>
-                <div className="highlights">
-                  {place.highlights.slice(0, 2).map((h, i) => (
-                    <span key={i} className="highlight-tag">{h}</span>
-                  ))}
-                </div>
-                <div className="card-footer">
-                  <div className="rating">
-                    ⭐ {place.rating}
+        {loading ? (
+          <div className="loading">
+            <div className="spinner"></div>
+            <p>Loading places...</p>
+          </div>
+        ) : (
+          <>
+            {/* Places Grid */}
+            <div className="places-grid">
+              {filteredPlaces.map((place, idx) => (
+                <div
+                  key={place.id}
+                  className="place-card"
+                  onClick={() => openPlaceDetails(place)}
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
+                  {place.images && place.images.length > 0 ? (
+                    <div className="place-image-container">
+                      <img 
+                        src={place.images[0]} 
+                        alt={place.name}
+                        className="place-image"
+                      />
+                      {place.images.length > 1 && (
+                        <div className="image-badge">
+                          📷 {place.images.length} photos
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="place-icon">{getCategoryIcon(place.category)}</div>
+                  )}
+
+                  <div className="place-content">
+                    <h3>{place.name}</h3>
+                    <div className="place-meta">
+                      <span className="distance">📍 {place.distance}</span>
+                      <span className="time">⏱️ {place.time}</span>
+                    </div>
+                    <p className="description">{place.description}</p>
+                    <div className="highlights">
+                      {place.highlights.slice(0, 2).map((h, i) => (
+                        <span key={i} className="highlight-tag">{h}</span>
+                      ))}
+                    </div>
+                    <div className="card-footer">
+                      <div className="rating">
+                        ⭐ {place.rating}
+                      </div>
+                      <span className="view-more">View Details →</span>
+                    </div>
                   </div>
-                  <span className="view-more">View Details →</span>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+
+            {filteredPlaces.length === 0 && (
+              <div className="no-results">
+                <div className="no-results-icon">📍</div>
+                <h3>No places found</h3>
+                <p>Try selecting a different category</p>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Detail Modal */}
       {selectedPlace && (
-        <div className="modal" onClick={() => setSelectedPlace(null)}>
+        <div className="modal" onClick={closePlaceDetails}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setSelectedPlace(null)}>×</button>
+            <button className="close-btn" onClick={closePlaceDetails}>×</button>
             
-            <div className="modal-icon">{selectedPlace.image}</div>
-            <h2>{selectedPlace.name}</h2>
-            
-            <div className="modal-meta">
-              <div className="meta-item">
-                <span className="meta-label">Distance</span>
-                <span className="meta-value">📍 {selectedPlace.distance}</span>
-              </div>
-              <div className="meta-item">
-                <span className="meta-label">Travel Time</span>
-                <span className="meta-value">⏱️ {selectedPlace.time}</span>
-              </div>
-              <div className="meta-item">
-                <span className="meta-label">Rating</span>
-                <span className="meta-value">⭐ {selectedPlace.rating}</span>
-              </div>
-            </div>
+            {/* Image Gallery */}
+            {selectedPlace.images && selectedPlace.images.length > 0 && (
+              <div className="gallery">
+                <div className="gallery-main">
+                  <img 
+                    src={selectedPlace.images[activeImageIndex]} 
+                    alt={selectedPlace.name}
+                    className="gallery-image"
+                  />
+                  {selectedPlace.images.length > 1 && (
+                    <>
+                      <button onClick={prevImage} className="gallery-nav prev">
+                        ‹
+                      </button>
+                      <button onClick={nextImage} className="gallery-nav next">
+                        ›
+                      </button>
+                      <div className="gallery-counter">
+                        {activeImageIndex + 1} / {selectedPlace.images.length}
+                      </div>
+                    </>
+                  )}
+                </div>
 
-            <p className="modal-description">{selectedPlace.description}</p>
-
-            <div className="modal-highlights">
-              <h4>Highlights</h4>
-              <div className="highlights-grid">
-                {selectedPlace.highlights.map((h, i) => (
-                  <span key={i} className="highlight-pill">{h}</span>
-                ))}
+                {selectedPlace.images.length > 1 && (
+                  <div className="gallery-thumbnails">
+                    {selectedPlace.images.map((img, i) => (
+                      <div
+                        key={i}
+                        className={`gallery-thumb ${
+                          i === activeImageIndex ? "active" : ""
+                        }`}
+                        onClick={() => setActiveImageIndex(i)}
+                      >
+                        <img src={img} alt={`${selectedPlace.name} ${i + 1}`} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
-            <div className="modal-actions">
-              <button className="action-btn primary">Get Directions</button>
-              <button className="action-btn secondary">Learn More</button>
+            <div className="modal-details">
+              <div className="modal-icon">{getCategoryIcon(selectedPlace.category)}</div>
+              <h2>{selectedPlace.name}</h2>
+              
+              <div className="modal-meta">
+                <div className="meta-item">
+                  <span className="meta-label">Distance</span>
+                  <span className="meta-value">📍 {selectedPlace.distance}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Travel Time</span>
+                  <span className="meta-value">⏱️ {selectedPlace.time}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Rating</span>
+                  <span className="meta-value">⭐ {selectedPlace.rating}</span>
+                </div>
+              </div>
+
+              <p className="modal-description">{selectedPlace.description}</p>
+
+              <div className="modal-highlights">
+                <h4>Highlights</h4>
+                <div className="highlights-grid">
+                  {selectedPlace.highlights.map((h, i) => (
+                    <span key={i} className="highlight-pill">{h}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                {selectedPlace.location_url ? (
+                  <a 
+                    href={selectedPlace.location_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="action-btn primary"
+                  >
+                    Get Directions
+                  </a>
+                ) : (
+                  <button className="action-btn primary">Get Directions</button>
+                )}
+                <button onClick={closePlaceDetails} className="action-btn secondary">
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -368,6 +443,30 @@ export default function PlacesToVisit() {
           font-size: 1.5rem;
         }
 
+        .loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          gap: 1rem;
+        }
+
+        .spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid rgba(249, 115, 22, 0.2);
+          border-top-color: #f97316;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
         .places-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -379,12 +478,11 @@ export default function PlacesToVisit() {
           backdrop-filter: blur(10px);
           border: 1px solid rgba(249, 115, 22, 0.2);
           border-radius: 24px;
-          padding: 2rem;
+          overflow: hidden;
           cursor: pointer;
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           animation: cardFadeIn 0.6s ease-out both;
           position: relative;
-          overflow: hidden;
         }
 
         @keyframes cardFadeIn {
@@ -419,15 +517,49 @@ export default function PlacesToVisit() {
           box-shadow: 0 20px 60px rgba(249, 115, 22, 0.3);
         }
 
+        .place-image-container {
+          position: relative;
+          height: 200px;
+          overflow: hidden;
+        }
+
+        .place-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.4s;
+        }
+
+        .place-card:hover .place-image {
+          transform: scale(1.1);
+        }
+
+        .image-badge {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: rgba(15, 23, 42, 0.9);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.85rem;
+          backdrop-filter: blur(10px);
+        }
+
         .place-icon {
           font-size: 4rem;
-          margin-bottom: 1rem;
+          text-align: center;
+          padding: 2rem;
+          background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(14, 165, 233, 0.1));
           animation: float 3s ease-in-out infinite;
         }
 
         @keyframes float {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
+        }
+
+        .place-content {
+          padding: 2rem;
         }
 
         .place-content h3 {
@@ -490,6 +622,27 @@ export default function PlacesToVisit() {
           transform: translateX(5px);
         }
 
+        .no-results {
+          text-align: center;
+          padding: 4rem 2rem;
+        }
+
+        .no-results-icon {
+          font-size: 5rem;
+          margin-bottom: 1rem;
+          opacity: 0.5;
+        }
+
+        .no-results h3 {
+          font-size: 2rem;
+          margin-bottom: 0.5rem;
+          color: #f97316;
+        }
+
+        .no-results p {
+          color: #94a3b8;
+        }
+
         .modal {
           position: fixed;
           top: 0;
@@ -504,6 +657,7 @@ export default function PlacesToVisit() {
           z-index: 1000;
           padding: 2rem;
           animation: fadeIn 0.3s ease-out;
+          overflow-y: auto;
         }
 
         @keyframes fadeIn {
@@ -516,8 +670,7 @@ export default function PlacesToVisit() {
           backdrop-filter: blur(20px);
           border: 2px solid rgba(249, 115, 22, 0.3);
           border-radius: 30px;
-          padding: 3rem;
-          max-width: 600px;
+          max-width: 800px;
           width: 100%;
           max-height: 90vh;
           overflow-y: auto;
@@ -537,9 +690,10 @@ export default function PlacesToVisit() {
         }
 
         .close-btn {
-          position: absolute;
+          position: sticky;
           top: 1.5rem;
           right: 1.5rem;
+          float: right;
           width: 40px;
           height: 40px;
           border-radius: 50%;
@@ -552,11 +706,120 @@ export default function PlacesToVisit() {
           display: flex;
           align-items: center;
           justify-content: center;
+          z-index: 10;
         }
 
         .close-btn:hover {
           background: #f97316;
           transform: rotate(90deg);
+        }
+
+        .gallery {
+          padding: 2rem 2rem 1rem;
+        }
+
+        .gallery-main {
+          position: relative;
+          height: 400px;
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 20px;
+          overflow: hidden;
+          margin-bottom: 1rem;
+        }
+
+        .gallery-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          animation: imageZoom 0.3s ease-out;
+        }
+
+        @keyframes imageZoom {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .gallery-nav {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 45px;
+          height: 45px;
+          border-radius: 50%;
+          background: rgba(15, 23, 42, 0.9);
+          border: 1px solid rgba(249, 115, 22, 0.3);
+          color: #f8fafc;
+          font-size: 1.5rem;
+          cursor: pointer;
+          transition: all 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .gallery-nav:hover {
+          background: #f97316;
+          transform: translateY(-50%) scale(1.1);
+        }
+
+        .gallery-nav.prev {
+          left: 1rem;
+        }
+
+        .gallery-nav.next {
+          right: 1rem;
+        }
+
+        .gallery-counter {
+          position: absolute;
+          bottom: 1rem;
+          right: 1rem;
+          background: rgba(15, 23, 42, 0.9);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.9rem;
+        }
+
+        .gallery-thumbnails {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+          gap: 0.75rem;
+        }
+
+        .gallery-thumb {
+          aspect-ratio: 1;
+          background: rgba(255, 255, 255, 0.05);
+          border: 2px solid rgba(249, 115, 22, 0.2);
+          border-radius: 12px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+
+        .gallery-thumb img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .gallery-thumb:hover {
+          border-color: #f97316;
+          transform: scale(1.05);
+        }
+
+        .gallery-thumb.active {
+          border-color: #f97316;
+          background: rgba(249, 115, 22, 0.2);
+        }
+
+        .modal-details {
+          padding: 0 2rem 2rem;
         }
 
         .modal-icon {
@@ -571,7 +834,7 @@ export default function PlacesToVisit() {
           50% { transform: scale(1.1); }
         }
 
-        .modal-content h2 {
+        .modal-details h2 {
           text-align: center;
           margin-bottom: 2rem;
           font-size: 2rem;
@@ -656,6 +919,9 @@ export default function PlacesToVisit() {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s;
+          text-decoration: none;
+          display: block;
+          text-align: center;
         }
 
         .action-btn.primary {
@@ -698,10 +964,6 @@ export default function PlacesToVisit() {
             font-size: 0.9rem;
           }
 
-          .modal-content {
-            padding: 2rem 1.5rem;
-          }
-
           .modal-meta {
             grid-template-columns: 1fr;
           }
@@ -712,6 +974,10 @@ export default function PlacesToVisit() {
 
           .modal-actions {
             grid-template-columns: 1fr;
+          }
+
+          .gallery-main {
+            height: 250px;
           }
         }
       `}</style>
