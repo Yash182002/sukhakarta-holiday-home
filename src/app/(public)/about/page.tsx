@@ -3,6 +3,18 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+type ContentSection = {
+  id: string;
+  page: 'home' | 'about';
+  section_key: string;
+  section_title: string | null;
+  section_content: string | null;
+  section_data: any | null;
+  images: string[];
+  display_order: number;
+  is_active: boolean;
+};
+
 export default function AboutPage() {
   const [sections, setSections] = useState<ContentSection[]>([]);
   const [loading, setLoading] = useState(true);
