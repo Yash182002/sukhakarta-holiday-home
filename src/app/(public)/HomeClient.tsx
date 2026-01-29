@@ -151,7 +151,7 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
                       <span className="price">₹{room.base_price}</span>
                       <span className="price-label">/ night</span>
                     </div>
-                    <Link href="/book" className="book-btn">
+                    <Link href="/book" className="cta-button">
                       Book Now →
                     </Link>
                   </div>
