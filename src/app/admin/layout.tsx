@@ -125,6 +125,16 @@ export default function AdminLayout({
             </a>
 
             <a
+              href="/admin/places"
+              className={`nav-item ${
+                isActiveRoute("/admin/places") ? "active" : ""
+              }`}
+            >
+              <span className="nav-icon">📍</span>
+              <span>Places</span>
+            </a>
+
+            <a
               href="/admin/bookings"
               className={`nav-item ${
                 isActiveRoute("/admin/bookings") ? "active" : ""
