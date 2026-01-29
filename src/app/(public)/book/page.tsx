@@ -9,8 +9,6 @@ declare global {
   }
 }
 
-/* ---------------- TYPES ---------------- */
-
 type Room = {
   id: string;
   name: string;
@@ -23,31 +21,23 @@ type BookingDate = {
   check_out: string;
 };
 
-/* ---------------- UTIL ---------------- */
-
 function getBlockedDates(bookings: BookingDate[]) {
   const dates: string[] = [];
-
   bookings.forEach(b => {
     let d = new Date(b.check_in);
     const end = new Date(b.check_out);
-
     while (d < end) {
       dates.push(d.toISOString().split("T")[0]);
       d.setDate(d.getDate() + 1);
     }
   });
-
   return dates;
 }
-
-/* ---------------- PAGE ---------------- */
 
 export default function BookingPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
 
   const [form, setForm] = useState({
@@ -63,8 +53,6 @@ export default function BookingPage() {
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  /* ---------------- LOAD RAZORPAY ---------------- */
-
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -72,15 +60,11 @@ export default function BookingPage() {
     document.body.appendChild(script);
   }, []);
 
-  /* ---------------- FETCH ROOMS ---------------- */
-
   useEffect(() => {
     supabase.from("rooms").select("*").then(({ data }) => {
       if (data) setRooms(data);
     });
   }, []);
-
-  /* ---------------- FETCH BLOCKED DATES ---------------- */
 
   useEffect(() => {
     supabase
@@ -94,8 +78,6 @@ export default function BookingPage() {
       });
   }, []);
 
-  /* ---------------- STOP OVERBOOKING ---------------- */
-  
   useEffect(() => {
     supabase
       .from("blocked_dates")
@@ -109,8 +91,6 @@ export default function BookingPage() {
       });
   }, []);
 
-  /* ---------------- HELPERS ---------------- */
-
   function nights() {
     if (!form.checkIn || !form.checkOut) return 0;
     return Math.ceil(
@@ -123,8 +103,6 @@ export default function BookingPage() {
   function totalAmount() {
     return selectedRoom ? nights() * selectedRoom.base_price : 0;
   }
-
-  /* ---------------- AVAILABILITY ---------------- */
 
   async function checkAvailability() {
     setMessage("");
@@ -169,19 +147,19 @@ export default function BookingPage() {
     setLoading(false);
   }
 
-  /* ---------------- PAYMENT + INSERT ---------------- */
-
   async function startPayment() {
     if (!selectedRoom) return;
 
     const nightsCount = nights();
     const totalAmountValue = nightsCount * selectedRoom.base_price;
-    const advanceAmount = Math.min(1000, totalAmountValue);
+
+    // CHANGED: Pay full amount instead of advance
+    const amountToPay = totalAmountValue;
 
     const res = await fetch("/api/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: advanceAmount }),
+      body: JSON.stringify({ amount: amountToPay }),
     });
 
     const order = await res.json();
@@ -191,7 +169,7 @@ export default function BookingPage() {
       amount: order.amount,
       currency: "INR",
       name: "Sukhakarta Holiday Home",
-      description: "Booking Advance",
+      description: "Room Booking - Full Payment",
       order_id: order.id,
 
       handler: async function () {
@@ -205,7 +183,7 @@ export default function BookingPage() {
           phone: form.phone,
           status: "confirmed",
           total_amount: totalAmountValue,
-          advance_amount: advanceAmount,
+          advance_amount: totalAmountValue, // Full payment
         });
 
         if (error) {
@@ -223,18 +201,14 @@ export default function BookingPage() {
     new window.Razorpay(options).open();
   }
 
-  /* ---------------- UI ---------------- */
-
   return (
     <div className="booking-page">
-      {/* Animated Background */}
       <div className="bg-gradient">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
         <div className="gradient-orb orb-3"></div>
       </div>
 
-      {/* Hero Section */}
       <section className="hero">
         <div className="hero-content">
           <h1>Book Your Stay</h1>
@@ -244,7 +218,6 @@ export default function BookingPage() {
 
       <div className="container">
         <div className="booking-grid">
-          {/* FORM */}
           <div className="form-section">
             <h2>Reservation Details</h2>
             <p className="form-subtitle">Fill in your information to check availability</p>
@@ -333,7 +306,6 @@ export default function BookingPage() {
             )}
           </div>
 
-          {/* SUMMARY */}
           <div className="summary-section">
             <h2>Available Rooms</h2>
 
@@ -389,16 +361,16 @@ export default function BookingPage() {
                   <span>Total Amount</span>
                   <span>₹{totalAmount()}</span>
                 </div>
-                <div className="summary-item advance">
-                  <span>Advance Payable</span>
-                  <span>₹{Math.min(1000, totalAmount())}</span>
+                <div className="payment-info">
+                  <span className="info-icon">💳</span>
+                  <span>Full payment required to confirm booking</span>
                 </div>
 
                 <button
                   onClick={startPayment}
                   className="payment-btn"
                 >
-                  Pay Advance & Confirm
+                  Pay ₹{totalAmount()} & Confirm
                 </button>
               </div>
             )}
@@ -406,7 +378,6 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* Success Modal */}
       {showSuccess && (
         <div className="modal">
           <div className="modal-content">
@@ -749,14 +720,27 @@ export default function BookingPage() {
         }
 
         .summary-item.total {
-          font-size: 1.3rem;
+          font-size: 1.5rem;
           font-weight: 700;
           color: #f97316;
         }
 
-        .summary-item.advance {
-          font-weight: 600;
-          color: #22c55e;
+        .payment-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          border-radius: 12px;
+          margin: 1.5rem 0;
+          color: #3b82f6;
+          font-size: 0.9rem;
+          font-weight: 500;
+        }
+
+        .info-icon {
+          font-size: 1.5rem;
         }
 
         .payment-btn {
