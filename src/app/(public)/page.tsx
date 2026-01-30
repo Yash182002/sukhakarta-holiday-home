@@ -480,6 +480,18 @@ export default function HomePage() {
           font-size: 1rem;
         }
       }
+      @media (max-width: 768px) {
+        .hero {
+          min-height: auto;       /* 🔥 allow natural height */
+          padding-bottom: 4rem;  /* 🔥 space for CTA */
+        }
+      
+        .cta-button {
+          margin-top: 1.5rem;
+          font-size: 0.95rem;
+        }
+      }
+
       `}</style>
     </div>
   );
