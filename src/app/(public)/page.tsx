@@ -114,7 +114,7 @@ export default function HomePage() {
               <p className="hero-description">{heroContent.description}</p>
             )}
             {heroContent.button_text && heroContent.button_link && (
-              <Link href={heroContent.button_link} className="cta-button secondary">
+              <Link href={heroContent.button_link} className="cta-button">
                 {heroContent.button_text}
                 <span className="arrow">→</span>
               </Link>
@@ -157,7 +157,7 @@ export default function HomePage() {
               {ctaContent.title && <h2>{ctaContent.title}</h2>}
               {ctaContent.description && <p>{ctaContent.description}</p>}
               {ctaContent.button_text && ctaContent.button_link && (
-                <Link href={ctaContent.button_link} className="cta-button secondary">
+                <Link href={ctaContent.button_link} className="cta-button">
                   {ctaContent.button_text}
                   <span className="arrow">→</span>
                 </Link>
@@ -260,6 +260,9 @@ export default function HomePage() {
           text-align: center;
           max-width: 900px;
           animation: fadeInUp 1s ease-out;
+          display: flex;
+          flex-direction: column;
+          align-items: center;    
         }
 
         .hero-title {
@@ -306,17 +309,21 @@ export default function HomePage() {
           align-items: center;
           justify-content: center;
           gap: 0.5rem;
-          padding: 1rem 2rem;
+        
+          padding: 0.9rem 1.8rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
-          border-radius: 50px;
+        
+          border-radius: 999px;
           font-weight: 700;
-          font-size: 1.1rem;
+          font-size: 1rem;
+        
           transition: all 0.3s ease;
           box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
-          max-width: 200px;
-          width: auto;
+        
+          width: fit-content;          
+          max-width: fit-content;      
           white-space: nowrap;
         }
 
