@@ -77,7 +77,7 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
           <h1>Welcome to Paradise</h1>
           <p>Discover luxury coastal living in the heart of Alibag</p>
           <div className="hero-buttons">
-            <Link href="/book" className="cta-button">
+            <Link href="/book" className="cta-button secondary">
               Book Your Stay
             </Link>
             <Link href="/rooms" className="cta-button">
