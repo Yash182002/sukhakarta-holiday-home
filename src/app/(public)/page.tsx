@@ -452,16 +452,6 @@ export default function HomePage() {
           box-shadow: 0 15px 50px rgba(59, 130, 246, 0.6);
         }
 
-       @media (max-width: 768px) {
-          .hero {
-            min-height: auto !important;
-            height: auto !important;
-            padding-top: 6rem;
-            padding-bottom: 6rem;
-            overflow: visible !important;
-          }
-        }
-
           .features-grid {
             grid-template-columns: 1fr;
           }
@@ -485,17 +475,20 @@ export default function HomePage() {
         }
       }
       @media (max-width: 768px) {
-        .hero {
-          min-height: auto;       /* 🔥 allow natural height */
-          padding-bottom: 4rem;  /* 🔥 space for CTA */
-        }
-      
+            .hero {
+              min-height: auto !important;
+              height: auto !important;
+              padding-top: 6rem;
+              padding-bottom: 6rem;
+              overflow: visible !important;
+            }
+                
         .cta-button {
-          margin-top: 1.5rem;
-          font-size: 0.95rem;
-        }
-      }
-
+            margin-top: 1.5rem;
+            z-index: 10;
+              }
+           }
+              
       `}</style>
     </div>
   );
