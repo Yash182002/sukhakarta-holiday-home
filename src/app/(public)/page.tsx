@@ -114,7 +114,7 @@ export default function HomePage() {
               <p className="hero-description">{heroContent.description}</p>
             )}
             {heroContent.button_text && heroContent.button_link && (
-              <Link href={heroContent.button_link} className="cta-button">
+              <Link href={heroContent.button_link} className="cta-button secondary">
                 {heroContent.button_text}
                 <span className="arrow">→</span>
               </Link>
