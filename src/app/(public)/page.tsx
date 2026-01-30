@@ -304,16 +304,20 @@ export default function HomePage() {
         .cta-button {
           display: inline-flex;
           align-items: center;
-          gap: 0.75rem;
-          padding: 1.25rem 2.5rem;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 1rem 2rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
           border-radius: 50px;
           font-weight: 700;
-          font-size: 1.125rem;
+          font-size: 1.1rem;
           transition: all 0.3s ease;
           box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
+          max-width: 200px;
+          width: auto;
+          white-space: nowrap;
         }
 
         .cta-button:hover {
@@ -434,6 +438,7 @@ export default function HomePage() {
         .cta-button.secondary {
           background: linear-gradient(135deg, #3b82f6, #2563eb);
           box-shadow: 0 10px 40px rgba(59, 130, 246, 0.4);
+          max-width: 220px;
         }
 
         .cta-button.secondary:hover {
