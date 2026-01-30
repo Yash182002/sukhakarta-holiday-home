@@ -257,12 +257,11 @@ export default function HomePage() {
         }
 
         .hero-content {
-          flex-direction: column;
-          text-align: center;
-          max-width: 900px;
-          animation: fadeInUp 1s ease-out;
-          align-items:center;
-        }
+            display: flex;
+            flex-direction: column;
+            align-items: center;    
+            text-align: center;
+          }
 
         .hero-title {
           font-size: clamp(2.5rem, 6vw, 5rem);
