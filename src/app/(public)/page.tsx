@@ -304,16 +304,24 @@ export default function HomePage() {
         .cta-button {
           display: inline-flex;
           align-items: center;
-          gap: 0.75rem;
-          padding: 1.25rem 2.5rem;
+          justify-content: center;
+          gap: 0.5rem;
+        
+          padding: 0.9rem 1.8rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
-          border-radius: 50px;
+        
+          border-radius: 999px;
           font-weight: 700;
-          font-size: 1.125rem;
+          font-size: 1rem;
+        
           transition: all 0.3s ease;
           box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
+        
+          width: fit-content;          
+          max-width: fit-content;      
+          white-space: nowrap;
         }
 
         .cta-button:hover {
