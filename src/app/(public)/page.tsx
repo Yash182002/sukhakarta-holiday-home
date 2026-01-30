@@ -167,7 +167,7 @@ export default function HomePage() {
         </section>
       )}
 
-      <style jsx>{`
+       <style jsx>{`
         .homepage {
           position: relative;
           min-height: 100vh;
@@ -260,9 +260,6 @@ export default function HomePage() {
           text-align: center;
           max-width: 900px;
           animation: fadeInUp 1s ease-out;
-          display: flex;
-          flex-direction: column;
-          align-items: center;    
         }
 
         .hero-title {
@@ -307,24 +304,16 @@ export default function HomePage() {
         .cta-button {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-        
-          padding: 0.9rem 1.8rem;
+          gap: 0.75rem;
+          padding: 1.25rem 2.5rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
-        
-          border-radius: 999px;
+          border-radius: 50px;
           font-weight: 700;
-          font-size: 1rem;
-        
+          font-size: 1.125rem;
           transition: all 0.3s ease;
           box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
-        
-          width: fit-content;          
-          max-width: fit-content;      
-          white-space: nowrap;
         }
 
         .cta-button:hover {
@@ -445,12 +434,17 @@ export default function HomePage() {
         .cta-button.secondary {
           background: linear-gradient(135deg, #3b82f6, #2563eb);
           box-shadow: 0 10px 40px rgba(59, 130, 246, 0.4);
-          max-width: 220px;
         }
 
         .cta-button.secondary:hover {
           box-shadow: 0 15px 50px rgba(59, 130, 246, 0.6);
         }
+
+        @media (max-width: 768px) {
+          .hero {
+            min-height: 70vh;
+            padding: 1rem;
+          }
 
           .features-grid {
             grid-template-columns: 1fr;
@@ -460,35 +454,6 @@ export default function HomePage() {
             padding: 2rem;
           }
         }
-
-      @media (max-width: 640px) {
-        .cta-button {
-          max-width: 180px;
-          padding: 0.875rem 1.5rem;
-          font-size: 1rem;
-        }
-        
-        .cta-btn {
-          max-width: 200px;
-          padding: 1rem 2rem;
-          font-size: 1rem;
-        }
-      }
-      @media (max-width: 768px) {
-            .hero {
-              min-height: auto !important;
-              height: auto !important;
-              padding-top: 6rem;
-              padding-bottom: 6rem;
-              overflow: visible !important;
-            }
-                
-        .cta-button {
-            margin-top: 1.5rem;
-            z-index: 10;
-              }
-           }
-              
       `}</style>
     </div>
   );
