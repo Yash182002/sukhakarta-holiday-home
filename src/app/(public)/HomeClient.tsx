@@ -174,6 +174,7 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
           </div>
         </div>
       </section>
+      
        <style jsx>{`
         .home-page {
           min-height: 100vh;
