@@ -260,6 +260,7 @@ export default function HomePage() {
           text-align: center;
           max-width: 900px;
           animation: fadeInUp 1s ease-out;
+          align-items:center;
         }
 
         .hero-title {
