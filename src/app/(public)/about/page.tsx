@@ -1,855 +1,498 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+type ContentSection = {
+  id: string;
+  section: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  image_url?: string;
+  stats?: Array<{
+    label: string;
+    value: string;
+  }>;
+  values_list?: Array<{
+    title: string;
+    description: string;
+    icon: string;
+  }>;
+};
 
 export default function AboutPage() {
-  const [activeTab, setActiveTab] = useState('story');
+  const [heroContent, setHeroContent] = useState<ContentSection | null>(null);
+  const [storyContent, setStoryContent] = useState<ContentSection | null>(null);
+  const [valuesContent, setValuesContent] = useState<ContentSection | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const stats = [
-    { icon: '⭐', value: '500+', label: 'Happy Guests' },
-    { icon: '🏆', value: '4.8/5', label: 'Rating' },
-    { icon: '🏨', value: '10+', label: 'Premium Rooms' },
-    { icon: '📅', value: '5+', label: 'Years Experience' }
-  ];
+  useEffect(() => {
+    loadContent();
 
-  const team = [
-    { name: 'Rajesh Kumar', role: 'Founder & Owner', icon: '👨‍💼' },
-    { name: 'Priya Sharma', role: 'Guest Relations Manager', icon: '👩‍💼' },
-    { name: 'Chef Arjun', role: 'Head Chef', icon: '👨‍🍳' },
-    { name: 'Maya Patel', role: 'Hospitality Manager', icon: '👩‍🏫' }
-  ];
+    // Real-time subscription
+    const subscription = supabase
+      .channel('about-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'about_content' }, loadContent)
+      .subscribe();
 
-  const values = [
-    {
-      icon: '🤝',
-      title: 'Hospitality',
-      description: 'We treat every guest as family, ensuring personalized care and attention.'
-    },
-    {
-      icon: '🌟',
-      title: 'Excellence',
-      description: 'Committed to delivering the highest standards in service and comfort.'
-    },
-    {
-      icon: '🌊',
-      title: 'Sustainability',
-      description: 'Eco-friendly practices to preserve the natural beauty of Alibag.'
-    },
-    {
-      icon: '💎',
-      title: 'Authenticity',
-      description: 'Genuine coastal experiences with local culture and traditions.'
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function loadContent() {
+    const { data } = await supabase
+      .from("about_content")
+      .select("*");
+
+    if (data) {
+      setHeroContent(data.find(s => s.section === 'hero') || null);
+      setStoryContent(data.find(s => s.section === 'story') || null);
+      setValuesContent(data.find(s => s.section === 'values') || null);
     }
-  ];
+
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <p>Loading...</p>
+        <style jsx>{`
+          .loading-screen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: #0f172a;
+          }
+          .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(249, 115, 22, 0.2);
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          p {
+            color: #94a3b8;
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="about-page">
-      {/* Animated Particles Background */}
-      <div className="particles">
-        {[...Array(20)].map((_, i) => (
-          <div key={i} className="particle" style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 5}s`,
-            animationDuration: `${5 + Math.random() * 10}s`
-          }}></div>
-        ))}
+      {/* Background Effects */}
+      <div className="bg-gradient">
+        <div className="gradient-orb orb-1"></div>
+        <div className="gradient-orb orb-2"></div>
+        <div className="gradient-orb orb-3"></div>
       </div>
 
       {/* Hero Section */}
-      <div className="hero">
-        <div className="hero-overlay"></div>
-        <div className="hero-content">
-          <h1>Our Story</h1>
-          <p>Creating Unforgettable Memories Since 2019</p>
-        </div>
-      </div>
+      {heroContent && (
+        <section className="hero">
+          <div className="container">
+            <div className="hero-content">
+              <h1 className="hero-title">{heroContent.title}</h1>
+              {heroContent.subtitle && (
+                <p className="hero-subtitle">{heroContent.subtitle}</p>
+              )}
+              {heroContent.description && (
+                <p className="hero-description">{heroContent.description}</p>
+              )}
 
-      {/* Stats Section */}
-      <div className="stats-section">
-        <div className="container">
-          <div className="stats-grid">
-            {stats.map((stat, idx) => (
-              <div key={idx} className="stat-card" style={{ animationDelay: `${idx * 0.1}s` }}>
-                <div className="stat-icon">{stat.icon}</div>
-                <div className="stat-value">{stat.value}</div>
-                <div className="stat-label">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="container">
-        {/* Tab Navigation */}
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === 'story' ? 'active' : ''}`}
-            onClick={() => setActiveTab('story')}
-          >
-            Our Story
-          </button>
-          <button
-            className={`tab ${activeTab === 'vision' ? 'active' : ''}`}
-            onClick={() => setActiveTab('vision')}
-          >
-            Vision & Mission
-          </button>
-          <button
-            className={`tab ${activeTab === 'values' ? 'active' : ''}`}
-            onClick={() => setActiveTab('values')}
-          >
-            Our Values
-          </button>
-        </div>
-
-        {/* Tab Content */}
-        <div className="tab-content">
-          {activeTab === 'story' && (
-            <div className="content-panel">
-              <div className="content-grid">
-                <div className="content-text">
-                  <h2>Welcome to Sukhakarta Holiday Home</h2>
-                  <p>
-                    Nestled along the pristine coastline of Alibag, Sukhakarta Holiday Home was born from a simple dream – to create a sanctuary where the chaos of city life melts away, replaced by the gentle rhythm of ocean waves and warm coastal hospitality.
-                  </p>
-                  <p>
-                    Founded in 2019 by the Kumar family, we've transformed a beachside property into a beloved destination that feels like a home away from home. Every corner of Sukhakarta has been designed with love, attention to detail, and a deep respect for the natural beauty that surrounds us.
-                  </p>
-                  <p>
-                    What started as a small family venture has blossomed into a thriving hospitality experience, hosting thousands of guests from across India and beyond. Yet, we've never lost sight of our core values – personalized care, authentic experiences, and creating memories that last a lifetime.
-                  </p>
-                  <div className="highlight-box">
-                    <h3>🌟 Our Promise</h3>
-                    <p>Every guest is treated like family. We're not just offering rooms; we're sharing a piece of paradise.</p>
-                  </div>
+              {/* Stats */}
+              {heroContent.stats && heroContent.stats.length > 0 && (
+                <div className="stats-grid">
+                  {heroContent.stats.map((stat, index) => (
+                    <div key={index} className="stat-card">
+                      <div className="stat-value">{stat.value}</div>
+                      <div className="stat-label">{stat.label}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="content-visual">
-                  <div className="visual-card">
-                    <div className="visual-icon">🏖️</div>
-                    <h3>Prime Location</h3>
-                    <p>Minutes from Alibag's most beautiful beaches</p>
-                  </div>
-                  <div className="visual-card">
-                    <div className="visual-icon">🏡</div>
-                    <h3>Comfort & Luxury</h3>
-                    <p>Modern amenities in a serene setting</p>
-                  </div>
-                  <div className="visual-card">
-                    <div className="visual-icon">🍴</div>
-                    <h3>Culinary Excellence</h3>
-                    <p>Authentic local and international cuisine</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-          )}
-
-          {activeTab === 'vision' && (
-            <div className="content-panel">
-              <div className="vision-grid">
-                <div className="vision-card">
-                  <h3>🎯 Our Vision</h3>
-                  <p>
-                    To be Alibag's most loved hospitality destination, where every guest discovers the perfect blend of luxury, comfort, and authentic coastal experiences. We envision a future where Sukhakarta becomes synonymous with unforgettable seaside getaways.
-                  </p>
-                </div>
-                <div className="vision-card">
-                  <h3>🚀 Our Mission</h3>
-                  <p>
-                    To provide exceptional hospitality that exceeds expectations, preserve and celebrate local culture, operate sustainably to protect our environment, and create a workplace where our team thrives and grows.
-                  </p>
-                </div>
+            {heroContent.image_url && (
+              <div className="hero-image">
+                <img src={heroContent.image_url} alt="About us" />
               </div>
-              <div className="timeline">
-                <h3>Our Journey</h3>
-                <div className="timeline-item">
-                  <div className="timeline-year">2019</div>
-                  <div className="timeline-content">
-                    <h4>The Beginning</h4>
-                    <p>Sukhakarta Holiday Home opens its doors to first guests</p>
-                  </div>
-                </div>
-                <div className="timeline-item">
-                  <div className="timeline-year">2020</div>
-                  <div className="timeline-content">
-                    <h4>Expansion</h4>
-                    <p>Added premium sea-view rooms and enhanced amenities</p>
-                  </div>
-                </div>
-                <div className="timeline-item">
-                  <div className="timeline-year">2022</div>
-                  <div className="timeline-content">
-                    <h4>Recognition</h4>
-                    <p>Awarded 'Best Beach Stay in Alibag' by Travel India Magazine</p>
-                  </div>
-                </div>
-                <div className="timeline-item">
-                  <div className="timeline-year">2024</div>
-                  <div className="timeline-content">
-                    <h4>Digital Innovation</h4>
-                    <p>Launched digital menu and online booking platform</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'values' && (
-            <div className="content-panel">
-              <h2 className="section-title">What We Stand For</h2>
-              <div className="values-grid">
-                {values.map((value, idx) => (
-                  <div key={idx} className="value-card" style={{ animationDelay: `${idx * 0.1}s` }}>
-                    <div className="value-icon">{value.icon}</div>
-                    <h3>{value.title}</h3>
-                    <p>{value.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Team Section */}
-        <div className="team-section">
-          <h2 className="section-title">Meet Our Team</h2>
-          <p className="section-subtitle">The people who make your stay exceptional</p>
-          <div className="team-grid">
-            {team.map((member, idx) => (
-              <div key={idx} className="team-card" style={{ animationDelay: `${idx * 0.1}s` }}>
-                <div className="team-avatar">{member.icon}</div>
-                <h3>{member.name}</h3>
-                <p>{member.role}</p>
-              </div>
-            ))}
+            )}
           </div>
-        </div>
+        </section>
+      )}
 
-        {/* CTA Section */}
-        <div className="cta-section">
-          <h2>Experience Sukhakarta</h2>
-          <p>Join our family of happy guests and create your own unforgettable memories</p>
-          <div className="cta-buttons">
-            <a href="/book" className="cta-btn primary">Book Your Stay</a>
-            <a href="/contact" className="cta-btn secondary">Contact Us</a>
+      {/* Story Section */}
+      {storyContent && (
+        <section className="story-section">
+          <div className="container">
+            <div className="story-content">
+              <div className="story-text">
+                {storyContent.title && <h2>{storyContent.title}</h2>}
+                {storyContent.subtitle && (
+                  <p className="story-subtitle">{storyContent.subtitle}</p>
+                )}
+                {storyContent.description && (
+                  <p className="story-description">{storyContent.description}</p>
+                )}
+              </div>
+              {storyContent.image_url && (
+                <div className="story-image">
+                  <img src={storyContent.image_url} alt="Our story" />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
+      )}
+
+      {/* Values Section */}
+      {valuesContent && valuesContent.values_list && (
+        <section className="values-section">
+          <div className="container">
+            {valuesContent.title && (
+              <div className="section-header">
+                <h2>{valuesContent.title}</h2>
+                {valuesContent.subtitle && (
+                  <p className="subtitle">{valuesContent.subtitle}</p>
+                )}
+              </div>
+            )}
+
+            <div className="values-grid">
+              {valuesContent.values_list.map((value, index) => (
+                <div key={index} className="value-card">
+                  <div className="value-icon">{value.icon}</div>
+                  <h3>{value.title}</h3>
+                  <p>{value.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <style jsx>{`
         .about-page {
-          min-height: 100vh;
-          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-          color: #f8fafc;
-          font-family: system-ui, -apple-system, sans-serif;
           position: relative;
-          overflow-x: hidden;
+          min-height: 100vh;
         }
 
-        .scroll-indicator {
-  animation: fadeOut 2s ease-in-out forwards;
-}
-
-@keyframes fadeOut {
-  0% {
-    opacity: 1;
-    visibility: visible;
-  }
-  100% {
-    opacity: 0;
-    visibility: hidden;
-  }
-}
-
-
-        .particles {
+        .bg-gradient {
           position: fixed;
           top: 0;
           left: 0;
-          right: 0;
-          bottom: 0;
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        .particle {
-          position: absolute;
-          width: 4px;
-          height: 4px;
-          background: #f97316;
-          border-radius: 50%;
-          animation: rise linear infinite;
-        }
-
-        @keyframes rise {
-          0% {
-            bottom: -10px;
-            opacity: 0;
-          }
-          10% {
-            opacity: 1;
-          }
-          90% {
-            opacity: 1;
-          }
-          100% {
-            bottom: 100vh;
-            opacity: 0;
-          }
-        }
-
-        .hero {
-          position: relative;
-          height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          width: 100%;
+          height: 100%;
           overflow: hidden;
+          z-index: -1;
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         }
 
-        .hero-overlay {
+        .gradient-orb {
           position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: 
-            radial-gradient(circle at 20% 50%, rgba(249, 115, 22, 0.2), transparent 50%),
-            radial-gradient(circle at 80% 50%, rgba(14, 165, 233, 0.2), transparent 50%);
-          animation: pulse 10s ease-in-out infinite;
+          border-radius: 50%;
+          filter: blur(80px);
+          opacity: 0.3;
+          animation: float 20s ease-in-out infinite;
         }
 
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-
-        .hero-content {
-          position: relative;
-          z-index: 1;
-          text-align: center;
-          padding: 2rem;
-        }
-
-        .hero h1 {
-          font-size: clamp(4rem, 10vw, 7rem);
-          margin-bottom: 1rem;
-          background: linear-gradient(135deg, #fff 0%, #f97316 50%, #0ea5e9 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: fadeInUp 1s ease-out;
-        }
-
-        .hero p {
-          font-size: clamp(1.2rem, 3vw, 2rem);
-          color: #cbd5e1;
-          animation: fadeInUp 1s ease-out 0.3s both;
-        }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(40px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .scroll-indicator {
-          position: absolute;
-          bottom: 2rem;
-          left: 50%;
-          transform: translateX(-50%);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-          animation: fadeIn 1s ease-out 1s both;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        .mouse {
-          width: 30px;
-          height: 50px;
-          border: 2px solid #f97316;
-          border-radius: 20px;
-          position: relative;
-        }
-
-        .wheel {
-          width: 4px;
-          height: 10px;
+        .orb-1 {
+          width: 500px;
+          height: 500px;
           background: #f97316;
-          border-radius: 2px;
-          position: absolute;
-          top: 8px;
-          left: 50%;
-          transform: translateX(-50%);
-          animation: scroll 2s ease-in-out infinite;
+          top: -200px;
+          right: -200px;
         }
 
-        @keyframes scroll {
-          0% { top: 8px; opacity: 1; }
-          100% { top: 30px; opacity: 0; }
+        .orb-2 {
+          width: 400px;
+          height: 400px;
+          background: #ea580c;
+          bottom: -150px;
+          left: -150px;
+          animation-delay: -5s;
         }
 
-        .scroll-indicator span {
-          font-size: 0.9rem;
-          color: #94a3b8;
+        .orb-3 {
+          width: 350px;
+          height: 350px;
+          background: #c2410c;
+          top: 50%;
+          right: 30%;
+          animation-delay: -10s;
         }
 
-        .stats-section {
-          position: relative;
-          z-index: 1;
-          padding: 4rem 2rem;
-          margin-top: -5rem;
+        @keyframes float {
+          0%, 100% {
+            transform: translate(0, 0) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 30px) scale(0.9);
+          }
         }
 
         .container {
           max-width: 1400px;
           margin: 0 auto;
-          padding: 0 2rem 4rem;
-          position: relative;
-          z-index: 1;
+          padding: 0 2rem;
+        }
+
+        .hero {
+          padding: 6rem 0;
+          min-height: 80vh;
+          display: flex;
+          align-items: center;
+        }
+
+        .hero .container {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4rem;
+          align-items: center;
+        }
+
+        .hero-content {
+          animation: fadeInLeft 1s ease-out;
+        }
+
+        @keyframes fadeInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .hero-title {
+          font-size: clamp(2.5rem, 5vw, 4rem);
+          font-weight: 800;
+          background: linear-gradient(135deg, #fff 0%, #f97316 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 1rem;
+          line-height: 1.2;
+        }
+
+        .hero-subtitle {
+          font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+          color: #cbd5e1;
+          margin-bottom: 1.5rem;
+          font-weight: 500;
+        }
+
+        .hero-description {
+          font-size: clamp(1rem, 2vw, 1.15rem);
+          color: #94a3b8;
+          line-height: 1.8;
+          margin-bottom: 3rem;
         }
 
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
           gap: 2rem;
         }
 
         .stat-card {
           text-align: center;
-          padding: 2rem;
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          border-radius: 20px;
-          transition: all 0.4s;
-          animation: slideUp 0.6s ease-out both;
-        }
-
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(40px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .stat-card:hover {
-          transform: translateY(-10px);
-          border-color: #f97316;
-          box-shadow: 0 20px 50px rgba(249, 115, 22, 0.3);
-        }
-
-        .stat-icon {
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          animation: bounce 2s ease-in-out infinite;
-        }
-
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
         }
 
         .stat-value {
-          font-size: 2.5rem;
-          font-weight: 700;
+          font-size: clamp(2rem, 4vw, 3rem);
+          font-weight: 800;
           color: #f97316;
           margin-bottom: 0.5rem;
         }
 
         .stat-label {
-          color: #cbd5e1;
-          font-size: 1.1rem;
+          font-size: 0.9rem;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
 
-        .tabs {
-          display: flex;
-          gap: 1rem;
-          margin: 4rem 0 2rem;
-          justify-content: center;
-          flex-wrap: wrap;
+        .hero-image {
+          animation: fadeInRight 1s ease-out;
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: 0 20px 60px rgba(249, 115, 22, 0.3);
         }
 
-        .tab {
-          padding: 1rem 2rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 2px solid rgba(249, 115, 22, 0.2);
-          border-radius: 50px;
-          color: #f8fafc;
-          font-size: 1.1rem;
+        @keyframes fadeInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .hero-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .story-section {
+          padding: 6rem 0;
+          background: rgba(249, 115, 22, 0.05);
+          border-top: 1px solid rgba(249, 115, 22, 0.2);
+          border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .story-content {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 4rem;
+          align-items: center;
+        }
+
+        .story-text h2 {
+          font-size: clamp(2rem, 4vw, 3rem);
+          color: white;
+          margin-bottom: 1rem;
+          font-weight: 800;
+        }
+
+        .story-subtitle {
+          font-size: clamp(1.1rem, 2vw, 1.4rem);
+          color: #f97316;
+          margin-bottom: 1.5rem;
           font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s;
         }
 
-        .tab:hover {
-          background: rgba(249, 115, 22, 0.1);
-          border-color: #f97316;
+        .story-description {
+          font-size: clamp(1rem, 2vw, 1.15rem);
+          color: #cbd5e1;
+          line-height: 1.8;
         }
 
-        .tab.active {
-          background: linear-gradient(135deg, #f97316, #ea580c);
-          border-color: #f97316;
-          box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
+        .story-image {
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
-        .tab-content {
+        .story-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .values-section {
+          padding: 6rem 0;
+        }
+
+        .section-header {
+          text-align: center;
           margin-bottom: 4rem;
         }
 
-        .content-panel {
-          animation: fadeInUp 0.6s ease-out;
-        }
-
-        .content-grid {
-          display: grid;
-          grid-template-columns: 1.5fr 1fr;
-          gap: 3rem;
-          margin-bottom: 3rem;
-        }
-
-        .content-text h2 {
-          font-size: 2.5rem;
-          margin-bottom: 1.5rem;
-          background: linear-gradient(135deg, #fff, #f97316);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .content-text p {
-          line-height: 1.8;
-          color: #cbd5e1;
-          margin-bottom: 1.5rem;
-        }
-
-        .highlight-box {
-          margin-top: 2rem;
-          padding: 2rem;
-          background: rgba(249, 115, 22, 0.1);
-          border-left: 4px solid #f97316;
-          border-radius: 12px;
-        }
-
-        .highlight-box h3 {
-          color: #f97316;
+        .section-header h2 {
+          font-size: clamp(2rem, 4vw, 3rem);
+          color: white;
           margin-bottom: 1rem;
+          font-weight: 800;
         }
 
-        .content-visual {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .visual-card {
-          padding: 1.5rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          border-radius: 16px;
-          transition: all 0.3s;
-        }
-
-        .visual-card:hover {
-          transform: translateX(10px);
-          border-color: #f97316;
-        }
-
-        .visual-icon {
-          font-size: 2.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .visual-card h3 {
-          color: #f97316;
-          margin-bottom: 0.5rem;
-        }
-
-        .visual-card p {
+        .subtitle {
+          font-size: clamp(1rem, 2vw, 1.25rem);
           color: #94a3b8;
-        }
-
-        .vision-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-          gap: 2rem;
-          margin-bottom: 3rem;
-        }
-
-        .vision-card {
-          padding: 2.5rem;
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          border-radius: 20px;
-        }
-
-        .vision-card h3 {
-          font-size: 2rem;
-          margin-bottom: 1.5rem;
-          color: #f97316;
-        }
-
-        .vision-card p {
-          line-height: 1.8;
-          color: #cbd5e1;
-        }
-
-        .timeline {
-          margin-top: 3rem;
-        }
-
-        .timeline h3 {
-          font-size: 2rem;
-          margin-bottom: 2rem;
-          text-align: center;
-          color: #f97316;
-        }
-
-        .timeline-item {
-          display: grid;
-          grid-template-columns: 150px 1fr;
-          gap: 2rem;
-          margin-bottom: 2rem;
-          position: relative;
-        }
-
-        .timeline-item::before {
-          content: '';
-          position: absolute;
-          left: 75px;
-          top: 40px;
-          bottom: -40px;
-          width: 2px;
-          background: linear-gradient(to bottom, #f97316, transparent);
-        }
-
-        .timeline-item:last-child::before {
-          display: none;
-        }
-
-        .timeline-year {
-          text-align: right;
-          font-size: 2rem;
-          font-weight: 700;
-          color: #f97316;
-          padding-right: 2rem;
-        }
-
-        .timeline-content {
-          padding: 1.5rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          border-radius: 16px;
-        }
-
-        .timeline-content h4 {
-          color: #f97316;
-          margin-bottom: 0.5rem;
-        }
-
-        .timeline-content p {
-          color: #cbd5e1;
-        }
-
-        .section-title {
-          font-size: 2.5rem;
-          text-align: center;
-          margin-bottom: 1rem;
-          background: linear-gradient(135deg, #fff, #f97316);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .section-subtitle {
-          text-align: center;
-          color: #94a3b8;
-          margin-bottom: 3rem;
         }
 
         .values-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
           gap: 2rem;
         }
 
         .value-card {
-          padding: 2rem;
           background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
           border: 1px solid rgba(249, 115, 22, 0.2);
           border-radius: 20px;
+          padding: 2.5rem;
           text-align: center;
-          transition: all 0.4s;
-          animation: fadeIn 0.6s ease-out both;
+          transition: all 0.4s ease;
         }
 
         .value-card:hover {
           transform: translateY(-10px);
           border-color: #f97316;
-          box-shadow: 0 20px 50px rgba(249, 115, 22, 0.3);
+          box-shadow: 0 20px 60px rgba(249, 115, 22, 0.3);
+          background: rgba(255, 255, 255, 0.08);
         }
 
         .value-icon {
-          font-size: 3.5rem;
-          margin-bottom: 1rem;
+          font-size: 4rem;
+          margin-bottom: 1.5rem;
+          display: inline-block;
+          transition: transform 0.3s ease;
+        }
+
+        .value-card:hover .value-icon {
+          transform: scale(1.1) rotate(5deg);
         }
 
         .value-card h3 {
-          color: #f97316;
-          margin-bottom: 1rem;
           font-size: 1.5rem;
+          color: white;
+          margin-bottom: 1rem;
+          font-weight: 700;
         }
 
         .value-card p {
-          color: #cbd5e1;
-          line-height: 1.6;
-        }
-
-        .team-section {
-          margin: 5rem 0;
-        }
-
-        .team-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 2rem;
-        }
-
-        .team-card {
-          text-align: center;
-          padding: 2rem;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          border-radius: 20px;
-          transition: all 0.4s;
-          animation: slideUp 0.6s ease-out both;
-        }
-
-        .team-card:hover {
-          transform: scale(1.05);
-          border-color: #f97316;
-          box-shadow: 0 20px 50px rgba(249, 115, 22, 0.3);
-        }
-
-        .team-avatar {
-          width: 100px;
-          height: 100px;
-          margin: 0 auto 1.5rem;
-          background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(14, 165, 233, 0.2));
-          border: 2px solid #f97316;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 3rem;
-        }
-
-        .team-card h3 {
-          color: #f8fafc;
-          margin-bottom: 0.5rem;
-        }
-
-        .team-card p {
           color: #94a3b8;
-        }
-
-        .cta-section {
-          text-align: center;
-          padding: 4rem 2rem;
-          background: rgba(249, 115, 22, 0.1);
-          border: 1px solid rgba(249, 115, 22, 0.2);
-          border-radius: 30px;
-          margin: 5rem 0;
-        }
-
-        .cta-section h2 {
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          background: linear-gradient(135deg, #fff, #f97316);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .cta-section p {
-          font-size: 1.2rem;
-          color: #cbd5e1;
-          margin-bottom: 2rem;
-        }
-
-        .cta-buttons {
-          display: flex;
-          gap: 1.5rem;
-          justify-content: center;
-          flex-wrap: wrap;
-        }
-
-        .cta-btn {
-          padding: 1.2rem 3rem;
-          border-radius: 50px;
-          font-size: 1.1rem;
-          font-weight: 600;
-          text-decoration: none;
-          transition: all 0.3s;
-          display: inline-block;
-        }
-
-        .cta-btn.primary {
-          background: linear-gradient(135deg, #f97316, #ea580c);
-          color: white;
-          box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
-        }
-
-        .cta-btn.primary:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 15px 40px rgba(249, 115, 22, 0.6);
-        }
-
-        .cta-btn.secondary {
-          background: transparent;
-          color: #f97316;
-          border: 2px solid #f97316;
-        }
-
-        .cta-btn.secondary:hover {
-          background: rgba(249, 115, 22, 0.1);
-          transform: translateY(-5px);
+          line-height: 1.7;
+          font-size: 1.05rem;
         }
 
         @media (max-width: 968px) {
-          .content-grid {
+          .hero .container,
+          .story-content {
+            grid-template-columns: 1fr;
+            gap: 3rem;
+          }
+
+          .hero-image,
+          .story-image {
+            order: -1;
+          }
+
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+
+          .values-grid {
             grid-template-columns: 1fr;
           }
+        }
 
-          .vision-grid {
+        @media (max-width: 640px) {
+          .stats-grid {
             grid-template-columns: 1fr;
-          }
-
-          .timeline-item {
-            grid-template-columns: 1fr;
-          }
-
-          .timeline-year {
-            text-align: left;
-            padding-right: 0;
-            padding-bottom: 0.5rem;
-          }
-
-          .timeline-item::before {
-            display: none;
           }
         }
       `}</style>
