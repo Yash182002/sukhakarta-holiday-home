@@ -459,6 +459,20 @@ export default function HomePage() {
             padding: 2rem;
           }
         }
+
+      @media (max-width: 640px) {
+        .cta-button {
+          max-width: 180px;
+          padding: 0.875rem 1.5rem;
+          font-size: 1rem;
+        }
+        
+        .cta-btn {
+          max-width: 200px;
+          padding: 1rem 2rem;
+          font-size: 1rem;
+        }
+      }
       `}</style>
     </div>
   );
