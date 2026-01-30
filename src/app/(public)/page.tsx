@@ -257,6 +257,7 @@ export default function HomePage() {
         }
 
         .hero-content {
+          flex-direction: column;
           text-align: center;
           max-width: 900px;
           animation: fadeInUp 1s ease-out;
