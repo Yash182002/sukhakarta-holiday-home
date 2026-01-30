@@ -287,19 +287,21 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
         }
 
         .cta-button {
-          padding: 1.2rem 3rem;
+          padding: 1rem 2rem;
           border-radius: 50px;
           font-size: 1.1rem;
           font-weight: 600;
           text-decoration: none;
           transition: all 0.3s;
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
-          width: fit-content !important;
-          margin: 0 auto;  
-          
+          max-width: 200px;
+          width: auto;
+          white-space: nowrap;
         }
 
         .cta-button:hover {
@@ -581,18 +583,21 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
         }
 
         .cta-btn {
-          padding: 1.5rem 4rem;
+          padding: 1.2rem 2.5rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
-          width: auto;               
-          max-width: 280px;  
-          font-size: 1.2rem;
+          max-width: 220px;  
+          width: auto;
+          font-size: 1.1rem;
           font-weight: 700;
           text-decoration: none;
           border-radius: 50px;
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           transition: all 0.3s;
           box-shadow: 0 15px 40px rgba(249, 115, 22, 0.4);
+          white-space: nowrap;
         }
 
         .cta-btn:hover {
