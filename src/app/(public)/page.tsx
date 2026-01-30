@@ -452,11 +452,15 @@ export default function HomePage() {
           box-shadow: 0 15px 50px rgba(59, 130, 246, 0.6);
         }
 
-        @media (max-width: 768px) {
+       @media (max-width: 768px) {
           .hero {
-            min-height: 70vh;
-            padding: 1rem;
+            min-height: auto !important;
+            height: auto !important;
+            padding-top: 6rem;
+            padding-bottom: 6rem;
+            overflow: visible !important;
           }
+        }
 
           .features-grid {
             grid-template-columns: 1fr;
