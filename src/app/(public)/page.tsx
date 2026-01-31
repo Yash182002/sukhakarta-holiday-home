@@ -29,7 +29,6 @@ export default function HomePage() {
   useEffect(() => {
     loadContent();
 
-    // Real-time subscription
     const subscription = supabase
       .channel('homepage-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_content' }, loadContent)
@@ -90,7 +89,6 @@ export default function HomePage() {
 
   return (
     <div className="homepage">
-      {/* Background Effects */}
       <div className="bg-gradient">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
@@ -114,12 +112,10 @@ export default function HomePage() {
               <p className="hero-description">{heroContent.description}</p>
             )}
             {heroContent.button_text && heroContent.button_link && (
-              <div className="hero-button-wrapper">
-                <Link href={heroContent.button_link} className="cta-button">
-                  {heroContent.button_text}
-                  <span className="arrow">→</span>
-                </Link>
-              </div>
+              <Link href={heroContent.button_link} className="cta-button">
+                <span>{heroContent.button_text}</span>
+                <span className="arrow">→</span>
+              </Link>
             )}
           </div>
         </section>
@@ -159,22 +155,33 @@ export default function HomePage() {
               {ctaContent.title && <h2>{ctaContent.title}</h2>}
               {ctaContent.description && <p>{ctaContent.description}</p>}
               {ctaContent.button_text && ctaContent.button_link && (
-                <div className="cta-button-wrapper">
-                  <Link href={ctaContent.button_link} className="cta-button secondary">
-                    {ctaContent.button_text}
-                    <span className="arrow">→</span>
-                  </Link>
-                </div>
+                <Link href={ctaContent.button_link} className="cta-button secondary">
+                  <span>{ctaContent.button_text}</span>
+                  <span className="arrow">→</span>
+                </Link>
               )}
             </div>
           </div>
         </section>
       )}
 
-      <style jsx>{`
+      <style jsx global>{`
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        html, body {
+          overflow-x: hidden;
+          width: 100%;
+        }
+
         .homepage {
           position: relative;
           min-height: 100vh;
+          width: 100%;
+          overflow-x: hidden;
         }
 
         .bg-gradient {
@@ -236,12 +243,14 @@ export default function HomePage() {
         }
 
         .hero {
-          min-height: 90vh;
+          position: relative;
+          min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 2rem 1rem;
-          position: relative;
+          padding: 6rem 1.5rem 4rem;
+          width: 100%;
+          overflow: visible;
         }
 
         .hero-image {
@@ -250,7 +259,7 @@ export default function HomePage() {
           left: 0;
           width: 100%;
           height: 100%;
-          z-index: -1;
+          z-index: 0;
         }
 
         .hero-image img {
@@ -261,39 +270,42 @@ export default function HomePage() {
         }
 
         .hero-content {
+          position: relative;
+          z-index: 1;
           text-align: center;
           max-width: 900px;
           width: 100%;
           animation: fadeInUp 1s ease-out;
-          padding: 0 1rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1.5rem;
         }
 
         .hero-title {
-          font-size: clamp(2rem, 6vw, 5rem);
+          font-size: clamp(2rem, 8vw, 5rem);
           font-weight: 800;
           background: linear-gradient(135deg, #fff 0%, #f97316 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          margin-bottom: 1.5rem;
           line-height: 1.2;
+          width: 100%;
         }
 
         .hero-subtitle {
-          font-size: clamp(1rem, 3vw, 1.8rem);
+          font-size: clamp(1.1rem, 4vw, 1.8rem);
           color: #cbd5e1;
-          margin-bottom: 1rem;
           font-weight: 500;
+          width: 100%;
         }
 
         .hero-description {
-          font-size: clamp(0.95rem, 2vw, 1.25rem);
+          font-size: clamp(1rem, 2.5vw, 1.25rem);
           color: #94a3b8;
-          margin-bottom: 2rem;
           line-height: 1.8;
           max-width: 700px;
-          margin-left: auto;
-          margin-right: auto;
+          width: 100%;
         }
 
         @keyframes fadeInUp {
@@ -307,22 +319,15 @@ export default function HomePage() {
           }
         }
 
-        /* FIXED: Hero Button Wrapper */
-        .hero-button-wrapper {
-          display: flex;
-          justify-content: center;
-          width: 100%;
-          margin-top: 2rem;
-        }
-
+        /* CRITICAL: Button styles with mobile visibility fixes */
         .cta-button {
-          display: inline-flex;
+          display: inline-flex !important;
           align-items: center;
           justify-content: center;
           gap: 0.75rem;
           padding: 1.25rem 2.5rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
-          color: white;
+          color: white !important;
           text-decoration: none;
           border-radius: 50px;
           font-weight: 700;
@@ -330,7 +335,11 @@ export default function HomePage() {
           transition: all 0.3s ease;
           box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
           white-space: nowrap;
-          min-width: 200px;
+          position: relative;
+          z-index: 10;
+          margin-top: 1rem;
+          width: auto;
+          max-width: 90%;
         }
 
         .cta-button:hover {
@@ -340,6 +349,7 @@ export default function HomePage() {
 
         .cta-button .arrow {
           transition: transform 0.3s ease;
+          display: inline-block;
         }
 
         .cta-button:hover .arrow {
@@ -350,11 +360,13 @@ export default function HomePage() {
           max-width: 1400px;
           margin: 0 auto;
           padding: 0 2rem;
+          width: 100%;
         }
 
         .features {
           padding: 6rem 0;
           position: relative;
+          width: 100%;
         }
 
         .section-header {
@@ -378,6 +390,7 @@ export default function HomePage() {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
           gap: 2rem;
+          width: 100%;
         }
 
         .feature-card {
@@ -426,35 +439,31 @@ export default function HomePage() {
           background: rgba(249, 115, 22, 0.05);
           border-top: 1px solid rgba(249, 115, 22, 0.2);
           border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+          width: 100%;
         }
 
         .cta-content {
           text-align: center;
           max-width: 800px;
           margin: 0 auto;
-          padding: 0 1rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1.5rem;
         }
 
         .cta-content h2 {
           font-size: clamp(2rem, 4vw, 3rem);
           color: white;
-          margin-bottom: 1.5rem;
           font-weight: 800;
+          width: 100%;
         }
 
         .cta-content p {
           font-size: clamp(1rem, 2vw, 1.25rem);
           color: #cbd5e1;
-          margin-bottom: 2rem;
           line-height: 1.8;
-        }
-
-        /* FIXED: CTA Button Wrapper */
-        .cta-button-wrapper {
-          display: flex;
-          justify-content: center;
           width: 100%;
-          margin-top: 2rem;
         }
 
         .cta-button.secondary {
@@ -466,42 +475,23 @@ export default function HomePage() {
           box-shadow: 0 15px 50px rgba(59, 130, 246, 0.6);
         }
 
-        /* Mobile Optimizations */
+        /* Mobile specific styles */
         @media (max-width: 768px) {
           .hero {
-            min-height: 70vh;
-            padding: 4rem 1rem 2rem;
+            min-height: 85vh;
+            padding: 5rem 1rem 3rem;
           }
 
           .hero-content {
-            padding: 0 0.5rem;
-          }
-
-          .hero-title {
-            font-size: clamp(1.75rem, 8vw, 3rem);
-            margin-bottom: 1rem;
-          }
-
-          .hero-subtitle {
-            font-size: clamp(0.95rem, 4vw, 1.2rem);
-            margin-bottom: 0.75rem;
-          }
-
-          .hero-description {
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-          }
-
-          .hero-button-wrapper,
-          .cta-button-wrapper {
-            padding: 0 1rem;
+            gap: 1.25rem;
           }
 
           .cta-button {
-            width: 100%;
-            max-width: 280px;
             padding: 1.125rem 2rem;
             font-size: 1rem;
+            width: auto;
+            max-width: 85%;
+            min-width: 200px;
           }
 
           .features {
@@ -526,19 +516,32 @@ export default function HomePage() {
           }
         }
 
-        /* Extra Small Devices */
+        /* Extra small devices */
         @media (max-width: 480px) {
-          .cta-button {
-            padding: 1rem 1.5rem;
-            font-size: 0.95rem;
-            min-width: auto;
-            width: 100%;
-            max-width: 260px;
+          .hero {
+            padding: 4rem 0.75rem 2.5rem;
           }
 
-          .hero-button-wrapper,
-          .cta-button-wrapper {
-            padding: 0 0.5rem;
+          .cta-button {
+            padding: 1rem 1.75rem;
+            font-size: 0.95rem;
+            min-width: 180px;
+            max-width: 95%;
+          }
+
+          .container {
+            padding: 0 0.75rem;
+          }
+        }
+
+        /* Ensure buttons are always visible */
+        @media (max-width: 640px) {
+          .hero-content {
+            padding-bottom: 2rem;
+          }
+          
+          .cta-button {
+            margin-bottom: 1rem;
           }
         }
       `}</style>
