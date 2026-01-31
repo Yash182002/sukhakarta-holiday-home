@@ -155,7 +155,7 @@ export default function HomePage() {
               {ctaContent.title && <h2>{ctaContent.title}</h2>}
               {ctaContent.description && <p>{ctaContent.description}</p>}
               {ctaContent.button_text && ctaContent.button_link && (
-                <Link href={ctaContent.button_link} className="cta-button secondary">
+                <Link href={ctaContent.button_link} className="cta-button">
                   <span>{ctaContent.button_text}</span>
                   <span className="arrow">→</span>
                 </Link>
