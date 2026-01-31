@@ -114,10 +114,12 @@ export default function HomePage() {
               <p className="hero-description">{heroContent.description}</p>
             )}
             {heroContent.button_text && heroContent.button_link && (
-              <Link href={heroContent.button_link} className="cta-button">
-                {heroContent.button_text}
-                <span className="arrow">→</span>
-              </Link>
+              <div className="hero-button-wrapper">
+                <Link href={heroContent.button_link} className="cta-button">
+                  {heroContent.button_text}
+                  <span className="arrow">→</span>
+                </Link>
+              </div>
             )}
           </div>
         </section>
@@ -157,17 +159,19 @@ export default function HomePage() {
               {ctaContent.title && <h2>{ctaContent.title}</h2>}
               {ctaContent.description && <p>{ctaContent.description}</p>}
               {ctaContent.button_text && ctaContent.button_link && (
-                <Link href={ctaContent.button_link} className="cta-button">
-                  {ctaContent.button_text}
-                  <span className="arrow">→</span>
-                </Link>
+                <div className="cta-button-wrapper">
+                  <Link href={ctaContent.button_link} className="cta-button secondary">
+                    {ctaContent.button_text}
+                    <span className="arrow">→</span>
+                  </Link>
+                </div>
               )}
             </div>
           </div>
         </section>
       )}
 
-       <style jsx>{`
+      <style jsx>{`
         .homepage {
           position: relative;
           min-height: 100vh;
@@ -236,7 +240,7 @@ export default function HomePage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 2rem;
+          padding: 2rem 1rem;
           position: relative;
         }
 
@@ -257,14 +261,15 @@ export default function HomePage() {
         }
 
         .hero-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;    
-            text-align: center;
-          }
+          text-align: center;
+          max-width: 900px;
+          width: 100%;
+          animation: fadeInUp 1s ease-out;
+          padding: 0 1rem;
+        }
 
         .hero-title {
-          font-size: clamp(2.5rem, 6vw, 5rem);
+          font-size: clamp(2rem, 6vw, 5rem);
           font-weight: 800;
           background: linear-gradient(135deg, #fff 0%, #f97316 100%);
           -webkit-background-clip: text;
@@ -275,16 +280,16 @@ export default function HomePage() {
         }
 
         .hero-subtitle {
-          font-size: clamp(1.2rem, 3vw, 1.8rem);
+          font-size: clamp(1rem, 3vw, 1.8rem);
           color: #cbd5e1;
           margin-bottom: 1rem;
           font-weight: 500;
         }
 
         .hero-description {
-          font-size: clamp(1rem, 2vw, 1.25rem);
+          font-size: clamp(0.95rem, 2vw, 1.25rem);
           color: #94a3b8;
-          margin-bottom: 2.5rem;
+          margin-bottom: 2rem;
           line-height: 1.8;
           max-width: 700px;
           margin-left: auto;
@@ -302,27 +307,30 @@ export default function HomePage() {
           }
         }
 
+        /* FIXED: Hero Button Wrapper */
+        .hero-button-wrapper {
+          display: flex;
+          justify-content: center;
+          width: 100%;
+          margin-top: 2rem;
+        }
+
         .cta-button {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 0.5rem;
-        
-          padding: 0.9rem 1.8rem;
+          gap: 0.75rem;
+          padding: 1.25rem 2.5rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
-        
-          border-radius: 999px;
+          border-radius: 50px;
           font-weight: 700;
-          font-size: 1rem;
-        
+          font-size: 1.125rem;
           transition: all 0.3s ease;
           box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
-        
-          width: fit-content;          
-          max-width: fit-content;      
           white-space: nowrap;
+          min-width: 200px;
         }
 
         .cta-button:hover {
@@ -368,7 +376,7 @@ export default function HomePage() {
 
         .features-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
           gap: 2rem;
         }
 
@@ -424,6 +432,7 @@ export default function HomePage() {
           text-align: center;
           max-width: 800px;
           margin: 0 auto;
+          padding: 0 1rem;
         }
 
         .cta-content h2 {
@@ -436,8 +445,16 @@ export default function HomePage() {
         .cta-content p {
           font-size: clamp(1rem, 2vw, 1.25rem);
           color: #cbd5e1;
-          margin-bottom: 2.5rem;
+          margin-bottom: 2rem;
           line-height: 1.8;
+        }
+
+        /* FIXED: CTA Button Wrapper */
+        .cta-button-wrapper {
+          display: flex;
+          justify-content: center;
+          width: 100%;
+          margin-top: 2rem;
         }
 
         .cta-button.secondary {
@@ -449,18 +466,79 @@ export default function HomePage() {
           box-shadow: 0 15px 50px rgba(59, 130, 246, 0.6);
         }
 
+        /* Mobile Optimizations */
         @media (max-width: 768px) {
           .hero {
             min-height: 70vh;
-            padding: 1rem;
+            padding: 4rem 1rem 2rem;
+          }
+
+          .hero-content {
+            padding: 0 0.5rem;
+          }
+
+          .hero-title {
+            font-size: clamp(1.75rem, 8vw, 3rem);
+            margin-bottom: 1rem;
+          }
+
+          .hero-subtitle {
+            font-size: clamp(0.95rem, 4vw, 1.2rem);
+            margin-bottom: 0.75rem;
+          }
+
+          .hero-description {
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .hero-button-wrapper,
+          .cta-button-wrapper {
+            padding: 0 1rem;
+          }
+
+          .cta-button {
+            width: 100%;
+            max-width: 280px;
+            padding: 1.125rem 2rem;
+            font-size: 1rem;
+          }
+
+          .features {
+            padding: 4rem 0;
           }
 
           .features-grid {
             grid-template-columns: 1fr;
+            gap: 1.5rem;
           }
 
           .feature-card {
-            padding: 2rem;
+            padding: 2rem 1.5rem;
+          }
+
+          .cta-section {
+            padding: 4rem 0;
+          }
+
+          .container {
+            padding: 0 1rem;
+          }
+        }
+
+        /* Extra Small Devices */
+        @media (max-width: 480px) {
+          .cta-button {
+            padding: 1rem 1.5rem;
+            font-size: 0.95rem;
+            min-width: auto;
+            width: 100%;
+            max-width: 260px;
+          }
+
+          .hero-button-wrapper,
+          .cta-button-wrapper {
+            padding: 0 0.5rem;
           }
         }
       `}</style>
