@@ -103,6 +103,55 @@ export default function ContentManagement() {
     }
   }
 
+  async function deleteImageFromStorage(imageUrl: string) {
+  try {
+    const bucket = "content-images";
+
+    // Extract path after bucket name
+    const path = imageUrl.split("/content-images/")[1];
+    if (!path) return;
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .remove([path]);
+
+    if (error) {
+      console.error("Storage delete failed:", error);
+    }
+  } catch (err) {
+    console.error("Delete image error:", err);
+  }
+}
+
+  async function handleRemoveImage() {
+  if (!editingSection?.id || !editingSection.image_url) return;
+
+  const table =
+    activeTab === "homepage" ? "homepage_content" : "about_content";
+
+  const imageUrl = editingSection.image_url;
+
+  // 1. Remove image from DB
+  const { error } = await supabase
+    .from(table)
+    .update({ image_url: null })
+    .eq("id", editingSection.id);
+
+  if (error) {
+    alert("Failed to remove image");
+    console.error(error);
+    return;
+  }
+
+  // 2. Remove image from Storage
+  await deleteImageFromStorage(imageUrl);
+
+  // 3. Update UI
+  setEditingSection({ ...editingSection, image_url: undefined });
+  loadContent();
+}
+
+
   async function handleSave() {
     if (!editingSection) return;
 
