@@ -133,11 +133,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
-    </div>
-  );
-}
-
-<style jsx>{`
+      <style jsx>{`
         .homepage {
           position: relative;
           min-height: 100vh;
@@ -434,4 +430,6 @@ export default function HomePage() {
           }
         }
       `}</style>
-    
+    </div>
+  );
+}
