@@ -230,7 +230,7 @@ html, body {
           display: none;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.65rem 1.65rem;
+          padding: 0.75rem 1.75rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
