@@ -247,15 +247,15 @@ export default function RoomsPage() {
 
                   <div className="room-meta">
                     <span className="meta-item">
-                      <span className="icon">👥</span>
+                      <span className="icon"></span>
                       <span>Up to {room.maxGuests} Guests</span>
                     </span>
                     <span className="meta-item">
-                      <span className="icon">📏</span>
+                      <span className="icon"></span>
                       <span>{room.size}</span>
                     </span>
                     <span className="meta-item">
-                      <span className="icon">🪟</span>
+                      <span className="icon"></span>
                       <span>{room.view}</span>
                     </span>
                   </div>
@@ -292,7 +292,7 @@ export default function RoomsPage() {
         {/* Empty */}
         {!loading && filteredRooms.length === 0 && (
           <div className="no-results">
-            <div className="no-results-icon">🏨</div>
+            <div className="no-results-icon"></div>
             <h3>No rooms found</h3>
             <p>Try adjusting your filters</p>
           </div>
