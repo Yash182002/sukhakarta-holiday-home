@@ -17,12 +17,12 @@ type Place = {
 };
 
 const CATEGORIES = [
-  { id: 'all', name: 'All Places', icon: '🗺️' },
-  { id: 'beach', name: 'Beaches', icon: '🏖️' },
-  { id: 'historical', name: 'Historical', icon: '🏰' },
-  { id: 'spiritual', name: 'Spiritual', icon: '🛕' },
-  { id: 'adventure', name: 'Adventure', icon: '🎯' },
-  { id: 'nature', name: 'Nature', icon: '🌳' }
+  { id: 'all', name: 'All Places'},
+  { id: 'beach', name: 'Beaches'},
+  { id: 'historical', name: 'Historical'},
+  { id: 'spiritual', name: 'Spiritual'},
+  { id: 'adventure', name: 'Adventure'},
+  { id: 'nature', name: 'Nature'}
 ];
 
 export default function PlacesToVisit() {
