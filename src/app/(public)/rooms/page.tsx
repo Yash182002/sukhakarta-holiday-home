@@ -341,8 +341,8 @@ export default function RoomsPage() {
           </div>
         </div>
       )}
-    </div>
-    <style jsx>{`
+
+            <style jsx>{`
     
 .rooms-page {
   min-height: 100vh;
@@ -908,5 +908,7 @@ export default function RoomsPage() {
   }
 }
     `}</style>
+      
+    </div>
   );
 }
