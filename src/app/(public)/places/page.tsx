@@ -287,7 +287,6 @@ export default function PlacesToVisit() {
         </div>
       )}
     </div>
- )}
 
       <style jsx>{`
         .places-page {
