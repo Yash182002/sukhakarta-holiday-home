@@ -26,7 +26,6 @@ type Room = {
   originalPrice: number;
   maxGuests: number;
   size: string;
-  view: string;
   images: string[];
   amenities: string[];
   description: string;
