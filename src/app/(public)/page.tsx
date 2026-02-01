@@ -29,13 +29,10 @@ export default function HomePage() {
   useEffect(() => {
     loadContent();
 
+    // Real-time subscription
     const subscription = supabase
       .channel('homepage-updates')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'homepage_content' 
-      }, loadContent)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_content' }, loadContent)
       .subscribe();
 
     return () => {
@@ -44,7 +41,9 @@ export default function HomePage() {
   }, []);
 
   async function loadContent() {
-    const { data } = await supabase.from("homepage_content").select("*");
+    const { data } = await supabase
+      .from("homepage_content")
+      .select("*");
 
     if (data) {
       setHeroContent(data.find(s => s.section === 'hero') || null);
@@ -60,52 +59,86 @@ export default function HomePage() {
       <div className="loading-screen">
         <div className="spinner"></div>
         <p>Loading...</p>
+        <style jsx>{`
+          .loading-screen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            background: #0f172a;
+          }
+          .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(249, 115, 22, 0.2);
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+          }
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          p {
+            color: #94a3b8;
+          }
+        `}</style>
       </div>
     );
   }
 
   return (
     <div className="homepage">
+      {/* Background Effects */}
       <div className="bg-gradient">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
         <div className="gradient-orb orb-3"></div>
       </div>
 
+      {/* Hero Section */}
       {heroContent && (
-        <section className="hero-section">
+        <section className="hero">
           {heroContent.image_url && (
             <div className="hero-image">
-              <img src={heroContent.image_url} alt="Sukhakarta Holiday Home" loading="eager" />
+              <img src={heroContent.image_url} alt="Hero" />
             </div>
           )}
           <div className="hero-content">
             <h1 className="hero-title">{heroContent.title}</h1>
-            {heroContent.subtitle && <p className="hero-subtitle">{heroContent.subtitle}</p>}
-            {heroContent.description && <p className="hero-description">{heroContent.description}</p>}
+            {heroContent.subtitle && (
+              <p className="hero-subtitle">{heroContent.subtitle}</p>
+            )}
+            {heroContent.description && (
+              <p className="hero-description">{heroContent.description}</p>
+            )}
             {heroContent.button_text && heroContent.button_link && (
-              <div className="hero-buttons">
-                <Link href={heroContent.button_link} className="cta-button">
-                  {heroContent.button_text}
-                </Link>
-              </div>
+              <Link href={heroContent.button_link} className="cta-button">
+                {heroContent.button_text}
+                <span className="arrow">→</span>
+              </Link>
             )}
           </div>
         </section>
       )}
 
+      {/* Features Section */}
       {featuresContent && featuresContent.features && (
-        <section className="features-section">
+        <section className="features">
           <div className="container">
             {featuresContent.title && (
               <div className="section-header">
-                <h2 className="section-title">{featuresContent.title}</h2>
-                {featuresContent.subtitle && <p className="section-subtitle">{featuresContent.subtitle}</p>}
+                <h2>{featuresContent.title}</h2>
+                {featuresContent.subtitle && (
+                  <p className="subtitle">{featuresContent.subtitle}</p>
+                )}
               </div>
             )}
+
             <div className="features-grid">
               {featuresContent.features.map((feature, index) => (
-                <div key={index} className="feature-card card">
+                <div key={index} className="feature-card">
                   <div className="feature-icon">{feature.icon}</div>
                   <h3>{feature.title}</h3>
                   <p>{feature.description}</p>
@@ -116,22 +149,25 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* CTA Section */}
       {ctaContent && (
         <section className="cta-section">
           <div className="container">
             <div className="cta-content">
-              {ctaContent.title && <h2 className="section-title">{ctaContent.title}</h2>}
-              {ctaContent.description && <p className="cta-description">{ctaContent.description}</p>}
+              {ctaContent.title && <h2>{ctaContent.title}</h2>}
+              {ctaContent.description && <p>{ctaContent.description}</p>}
               {ctaContent.button_text && ctaContent.button_link && (
                 <Link href={ctaContent.button_link} className="cta-button">
                   {ctaContent.button_text}
+                  <span className="arrow">→</span>
                 </Link>
               )}
             </div>
           </div>
         </section>
       )}
-      <style jsx>{`
+
+       <style jsx>{`
         .homepage {
           position: relative;
           min-height: 100vh;
