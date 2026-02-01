@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
+/* ============================
+   DB ROOM TYPE (MATCH SUPABASE)
+============================ */
 type DBRoom = {
   id: string;
   name: string;
@@ -14,6 +16,9 @@ type DBRoom = {
   images: string[] | null;
 };
 
+/* ============================
+   UI ROOM TYPE
+============================ */
 type Room = {
   id: string;
   name: string;
@@ -21,6 +26,7 @@ type Room = {
   originalPrice: number;
   maxGuests: number;
   size: string;
+  view: string;
   images: string[];
   amenities: string[];
   description: string;
@@ -34,18 +40,27 @@ export default function RoomsPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [filterPrice, setFilterPrice] = useState("all");
 
+  /* ============================
+     FETCH ROOMS FROM SUPABASE
+  ============================ */
   useEffect(() => {
     fetchRooms();
 
+    // Set up real-time subscription
     const subscription = supabase
       .channel('public-rooms-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'rooms'
-      }, () => {
-        fetchRooms();
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms'
+        },
+        (payload) => {
+          console.log('Room change detected:', payload);
+          fetchRooms();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -72,6 +87,9 @@ export default function RoomsPage() {
     setLoading(false);
   }
 
+  /* ============================
+     MAP DB → UI
+  ============================ */
   function mapRoom(room: DBRoom): Room {
     return {
       id: room.id,
@@ -80,6 +98,7 @@ export default function RoomsPage() {
       originalPrice: Math.round(room.base_price * 1.25),
       maxGuests: room.max_guests,
       size: "350 sq ft",
+      view: "Garden View",
       images: room.images && room.images.length > 0 ? room.images : ['/placeholder-room.jpg'],
       amenities: room.amenities || [],
       description: room.description || "Beautiful room with modern amenities",
@@ -87,10 +106,14 @@ export default function RoomsPage() {
     };
   }
 
+  /* ============================
+     FILTER LOGIC
+  ============================ */
   const priceRanges = [
     { id: "all", label: "All Rooms", min: 0, max: Infinity },
-    { id: "budget", label: "Under ₹2500", min: 0, max: 2500 },
-    { id: "standard", label: "₹2500 - ₹3000", min: 2500, max: 3000 },
+    { id: "budget", label: "Under ₹3000", min: 0, max: 3000 },
+    { id: "mid", label: "₹3000 - ₹4500", min: 3000, max: 4500 },
+    { id: "luxury", label: "Above ₹4500", min: 4500, max: Infinity },
   ];
 
   const filteredRooms = rooms.filter((room) => {
@@ -98,6 +121,9 @@ export default function RoomsPage() {
     return room.price >= range.min && room.price <= range.max;
   });
 
+  /* ============================
+     MODAL HANDLERS
+  ============================ */
   const openRoomDetails = (room: Room) => {
     setSelectedRoom(room);
     setActiveImageIndex(0);
@@ -122,17 +148,23 @@ export default function RoomsPage() {
     );
   };
 
+  /* ============================
+     UI
+  ============================ */
   return (
     <div className="rooms-page">
-      <div className="rooms-hero">
+      {/* Hero */}
+      <div className="hero">
         <div className="hero-content">
           <h1>Our Rooms & Suites</h1>
           <p>Choose your perfect coastal retreat</p>
         </div>
       </div>
 
+      {/* Container */}
       <div className="container">
-        <div className="rooms-filter-section">
+        {/* Filter */}
+        <div className="filter-bar">
           <h3>Filter by Price</h3>
           <div className="filter-buttons">
             {priceRanges.map((range) => (
@@ -147,35 +179,61 @@ export default function RoomsPage() {
           </div>
         </div>
 
+        {/* Loading */}
         {loading && (
-          <div className="loading-screen">
+          <div className="loading">
             <div className="spinner"></div>
             <p>Loading rooms...</p>
           </div>
         )}
 
+        {/* Rooms Grid */}
         {!loading && (
           <div className="rooms-grid">
-            {filteredRooms.map((room) => (
+            {filteredRooms.map((room, idx) => (
               <div
                 key={room.id}
-                className="room-card card"
+                className="room-card"
                 onClick={() => openRoomDetails(room)}
+                style={{ animationDelay: `${idx * 0.1}s` }}
               >
-                <div className="room-image-wrapper">
-                  <img 
-                    src={room.images[0]} 
-                    alt={room.name}
-                    className="room-image"
-                  />
+                <div className="room-gallery-preview">
+                  <div className="main-image">
+                    <img 
+                      src={room.images[0]} 
+                      alt={room.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  </div>
                   {room.images.length > 1 && (
-                    <div className="image-count-badge">
-                      {room.images.length} photos
-                    </div>
+                    <>
+                      <div className="thumbnail-strip">
+                        {room.images.slice(1, 4).map((img, i) => (
+                          <div key={i} className="thumbnail">
+                            <img 
+                              src={img} 
+                              alt={`${room.name} ${i + 2}`}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="image-count">
+                        📷 {room.images.length} photos
+                      </div>
+                    </>
                   )}
                 </div>
 
-                <div className="room-content">
+                <div className="room-info">
                   <div className="room-header">
                     <h3>{room.name}</h3>
                     <div className="room-highlights">
@@ -189,11 +247,16 @@ export default function RoomsPage() {
 
                   <div className="room-meta">
                     <span className="meta-item">
-                      Max {room.maxGuests} Guests
+                      <span className="icon">👥</span>
+                      <span>Up to {room.maxGuests} Guests</span>
                     </span>
-                    <span className="meta-item-separator">•</span>
                     <span className="meta-item">
-                      {room.size}
+                      <span className="icon">📏</span>
+                      <span>{room.size}</span>
+                    </span>
+                    <span className="meta-item">
+                      <span className="icon">🪟</span>
+                      <span>{room.view}</span>
                     </span>
                   </div>
 
@@ -218,7 +281,7 @@ export default function RoomsPage() {
                       <span className="current-price">₹{room.price}</span>
                       <span className="price-label">per night</span>
                     </div>
-                    <button className="view-details-btn">View Details</button>
+                    <button className="details-btn">View Details →</button>
                   </div>
                 </div>
               </div>
@@ -226,35 +289,44 @@ export default function RoomsPage() {
           </div>
         )}
 
+        {/* Empty */}
         {!loading && filteredRooms.length === 0 && (
-          <div className="empty-state">
+          <div className="no-results">
+            <div className="no-results-icon">🏨</div>
             <h3>No rooms found</h3>
             <p>Try adjusting your filters</p>
           </div>
         )}
       </div>
 
+      {/* MODAL */}
       {selectedRoom && (
-        <div className="modal-overlay" onClick={closeRoomDetails}>
-          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-btn" onClick={closeRoomDetails}>
-              &times;
+        <div className="modal" onClick={closeRoomDetails}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={closeRoomDetails}>
+              ×
             </button>
 
-            <div className="gallery-section">
+            {/* Gallery */}
+            <div className="gallery">
               <div className="gallery-main">
                 <img 
                   src={selectedRoom.images[activeImageIndex]} 
                   alt={selectedRoom.name}
                   className="gallery-image"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
                 />
                 {selectedRoom.images.length > 1 && (
                   <>
-                    <button onClick={prevImage} className="gallery-nav gallery-prev">
-                      &lsaquo;
+                    <button onClick={prevImage} className="gallery-nav prev">
+                      ‹
                     </button>
-                    <button onClick={nextImage} className="gallery-nav gallery-next">
-                      &rsaquo;
+                    <button onClick={nextImage} className="gallery-nav next">
+                      ›
                     </button>
                     <div className="gallery-counter">
                       {activeImageIndex + 1} / {selectedRoom.images.length}
@@ -268,18 +340,29 @@ export default function RoomsPage() {
                   {selectedRoom.images.map((img, i) => (
                     <div
                       key={i}
-                      className={`gallery-thumb ${i === activeImageIndex ? "active" : ""}`}
+                      className={`gallery-thumb ${
+                        i === activeImageIndex ? "active" : ""
+                      }`}
                       onClick={() => setActiveImageIndex(i)}
                     >
-                      <img src={img} alt={`${selectedRoom.name} ${i + 1}`} />
+                      <img 
+                        src={img} 
+                        alt={`${selectedRoom.name} ${i + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
+            {/* Details */}
             <div className="modal-details">
-              <div className="modal-header-section">
+              <div className="modal-header">
                 <div>
                   <h2>{selectedRoom.name}</h2>
                   <div className="modal-highlights">
@@ -291,24 +374,37 @@ export default function RoomsPage() {
                   </div>
                 </div>
                 <div className="modal-pricing">
-                  <span className="modal-original-price">₹{selectedRoom.originalPrice}</span>
-                  <span className="modal-current-price">₹{selectedRoom.price}</span>
+                  <span className="modal-original-price">
+                    ₹{selectedRoom.originalPrice}
+                  </span>
+                  <span className="modal-current-price">
+                    ₹{selectedRoom.price}
+                  </span>
                   <span className="modal-price-label">per night</span>
                 </div>
               </div>
 
               <div className="modal-meta-grid">
-                <div className="meta-card">
-                  <strong>Max Guests</strong>
-                  <p>Up to {selectedRoom.maxGuests} people</p>
+                <div className="modal-meta-item">
+                  <span className="meta-icon">👥</span>
+                  <div>
+                    <strong>Max Guests</strong>
+                    <p>Up to {selectedRoom.maxGuests} people</p>
+                  </div>
                 </div>
-                <div className="meta-card">
-                  <strong>Room Size</strong>
-                  <p>{selectedRoom.size}</p>
+                <div className="modal-meta-item">
+                  <span className="meta-icon">📏</span>
+                  <div>
+                    <strong>Room Size</strong>
+                    <p>{selectedRoom.size}</p>
+                  </div>
                 </div>
-                <div className="meta-card">
-                  <strong>View</strong>
-                  <p>Garden/Sea View</p>
+                <div className="modal-meta-item">
+                  <span className="meta-icon">🪟</span>
+                  <div>
+                    <strong>View</strong>
+                    <p>{selectedRoom.view}</p>
+                  </div>
                 </div>
               </div>
 
@@ -322,7 +418,7 @@ export default function RoomsPage() {
                 <div className="amenities-grid">
                   {selectedRoom.amenities.map((amenity, i) => (
                     <div key={i} className="amenity-item">
-                      <span className="check-icon">✓</span>
+                      <span className="check">✓</span>
                       <span>{amenity}</span>
                     </div>
                   ))}
@@ -330,10 +426,13 @@ export default function RoomsPage() {
               </div>
 
               <div className="modal-actions">
-                <Link href="/book" className="cta-button">
+                <a href="/book" className="book-btn primary">
                   Book Now
-                </Link>
-                <button onClick={closeRoomDetails} className="btn-secondary">
+                </a>
+                <button
+                  onClick={closeRoomDetails}
+                  className="book-btn secondary"
+                >
                   Close
                 </button>
               </div>
@@ -342,573 +441,713 @@ export default function RoomsPage() {
         </div>
       )}
 
-            <style jsx>{`
-    
-.rooms-page {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #f8fafc;
-}
-
-.rooms-hero {
-  padding: 8rem 2rem 4rem;
-  text-align: center;
-  position: relative;
-}
-
-.rooms-hero h1 {
-  font-size: clamp(3rem, 8vw, 5rem);
-  margin-bottom: 1rem;
-  background: linear-gradient(135deg, #fff, #f97316, #0ea5e9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: fadeInUp 0.8s ease-out;
-}
-
-.rooms-hero p {
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
-  color: #cbd5e1;
-  animation: fadeInUp 0.8s ease-out 0.2s both;
-}
-
-.rooms-filter-section {
-  margin-bottom: 3rem;
-  text-align: center;
-}
-
-.rooms-filter-section h3 {
-  color: #f97316;
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-
-.rooms-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 2rem;
-  margin-bottom: 3rem;
-}
-
-.room-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  border-radius: 24px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.room-card:hover {
-  transform: translateY(-10px);
-  border-color: #f97316;
-  box-shadow: 0 25px 60px rgba(249, 115, 22, 0.3);
-}
-
-.room-image-wrapper {
-  position: relative;
-  height: 250px;
-  overflow: hidden;
-}
-
-.room-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s;
-}
-
-.room-card:hover .room-image {
-  transform: scale(1.1);
-}
-
-.image-count-badge {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: rgba(15, 23, 42, 0.9);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  color: white;
-  backdrop-filter: blur(10px);
-}
-
-/* Room Content */
-.room-content {
-  padding: 1.5rem;
-}
-
-.room-header h3 {
-  font-size: 1.5rem;
-  color: white;
-  margin-bottom: 0.5rem;
-}
-
-.room-highlights {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.highlight-badge {
-  padding: 0.25rem 0.75rem;
-  background: rgba(249, 115, 22, 0.2);
-  border: 1px solid rgba(249, 115, 22, 0.4);
-  border-radius: 12px;
-  font-size: 0.75rem;
-  color: #f97316;
-  font-weight: 600;
-}
-
-.room-meta {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin: 1rem 0;
-  color: #cbd5e1;
-  font-size: 0.95rem;
-}
-
-.meta-item-separator {
-  color: #64748b;
-}
-
-.room-description {
-  color: #94a3b8;
-  line-height: 1.6;
-  margin: 1rem 0;
-}
-
-.amenities-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 1rem 0;
-}
-
-.amenity-tag {
-  padding: 0.4rem 0.8rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  color: #cbd5e1;
-}
-
-.more-amenities {
-  padding: 0.4rem 0.8rem;
-  background: rgba(249, 115, 22, 0.1);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  color: #f97316;
-  font-weight: 600;
-}
-
-.room-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(249, 115, 22, 0.2);
-  margin-top: 1rem;
-}
-
-.pricing {
-  display: flex;
-  flex-direction: column;
-}
-
-.original-price {
-  font-size: 0.9rem;
-  color: #64748b;
-  text-decoration: line-through;
-}
-
-.current-price {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #f97316;
-}
-
-.price-label {
-  font-size: 0.85rem;
-  color: #94a3b8;
-}
-
-.view-details-btn {
-  padding: 0.875rem 1.5rem;
-  background: linear-gradient(135deg, #f97316, #ea580c);
-  border: none;
-  border-radius: 12px;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.view-details-btn:hover {
-  transform: translateX(5px);
-  box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 2rem;
-  overflow-y: auto;
-}
-
-.modal-container {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
-  border: 2px solid rgba(249, 115, 22, 0.3);
-  border-radius: 30px;
-  max-width: 900px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-  animation: scaleIn 0.4s ease-out;
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-close-btn {
-  position: sticky;
-  top: 1.5rem;
-  right: 1.5rem;
-  float: right;
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  background: rgba(249, 115, 22, 0.2);
-  border: 1px solid rgba(249, 115, 22, 0.4);
-  color: white;
-  font-size: 1.8rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
-.modal-close-btn:hover {
-  background: #f97316;
-  transform: rotate(90deg);
-}
-
-.gallery-section {
-  padding: 2rem;
-}
-
-.gallery-main {
-  position: relative;
-  height: 400px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(14, 165, 233, 0.1));
-  border-radius: 20px;
-  overflow: hidden;
-  margin-bottom: 1rem;
-}
-
-.gallery-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.gallery-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.gallery-nav:hover {
-  background: #f97316;
-  transform: translateY(-50%) scale(1.1);
-}
-
-.gallery-prev {
-  left: 1rem;
-}
-
-.gallery-next {
-  right: 1rem;
-}
-
-.gallery-counter {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  background: rgba(15, 23, 42, 0.9);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-}
-
-.gallery-thumbnails {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 0.75rem;
-}
-
-.gallery-thumb {
-  aspect-ratio: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(249, 115, 22, 0.2);
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.gallery-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.gallery-thumb:hover,
-.gallery-thumb.active {
-  border-color: #f97316;
-  transform: scale(1.05);
-}
-
-.gallery-thumb.active {
-  background: rgba(249, 115, 22, 0.2);
-}
-
-/* Modal Details */
-.modal-details {
-  padding: 0 2rem 2rem;
-}
-
-.modal-header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  gap: 2rem;
-}
-
-.modal-header-section h2 {
-  font-size: 2.5rem;
-  margin-bottom: 0.75rem;
-  background: linear-gradient(135deg, #fff, #f97316);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.modal-highlights {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.highlight-pill {
-  padding: 0.5rem 1rem;
-  background: rgba(249, 115, 22, 0.2);
-  border: 1px solid rgba(249, 115, 22, 0.4);
-  border-radius: 20px;
-  font-size: 0.9rem;
-  color: #f97316;
-  font-weight: 600;
-}
-
-.modal-pricing {
-  text-align: right;
-}
-
-.modal-original-price {
-  display: block;
-  font-size: 1rem;
-  color: #64748b;
-  text-decoration: line-through;
-}
-
-.modal-current-price {
-  display: block;
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #f97316;
-}
-
-.modal-price-label {
-  display: block;
-  font-size: 0.9rem;
-  color: #94a3b8;
-}
-
-.modal-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.meta-card {
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  border-radius: 16px;
-  text-align: center;
-}
-
-.meta-card strong {
-  display: block;
-  color: #f97316;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.meta-card p {
-  color: #cbd5e1;
-  margin: 0;
-}
-
-.modal-section {
-  margin-bottom: 2rem;
-}
-
-.modal-section h3 {
-  font-size: 1.5rem;
-  color: #f97316;
-  margin-bottom: 1rem;
-}
-
-.modal-section p {
-  color: #cbd5e1;
-  line-height: 1.8;
-}
-
-.amenities-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-}
-
-.amenity-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  border-radius: 10px;
-  color: #cbd5e1;
-  transition: all 0.3s;
-}
-
-.amenity-item:hover {
-  background: rgba(249, 115, 22, 0.1);
-  border-color: #f97316;
-}
-
-.check-icon {
-  color: #22c55e;
-  font-weight: 700;
-  font-size: 1.2rem;
-}
-
-.modal-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-top: 2rem;
-}
-
-.btn-secondary {
-  padding: 1.2rem 2rem;
-  border-radius: 12px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
-  background: transparent;
-  color: #f97316;
-  border: 2px solid #f97316;
-}
-
-.btn-secondary:hover {
-  background: rgba(249, 115, 22, 0.1);
-  transform: translateY(-3px);
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .rooms-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .modal-header-section {
-    flex-direction: column;
-  }
-
-  .modal-pricing {
-    text-align: left;
-  }
-
-  .modal-meta-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .amenities-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .modal-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .gallery-main {
-    height: 250px;
-  }
-}
-
-@media (max-width: 480px) {
-  .filter-buttons {
-    flex-direction: column;
-  }
-
-  .filter-btn {
-    width: 100%;
-  }
-}
-    `}</style>
-      
+      <style jsx>{`
+        .rooms-page {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+          color: #f8fafc;
+          font-family: system-ui, -apple-system, sans-serif;
+          position: relative;
+        }
+
+        .hero {
+          position: relative;
+          padding: 8rem 2rem 4rem;
+          text-align: center;
+          z-index: 1;
+        }
+
+        .hero-content h1 {
+          font-size: clamp(3rem, 8vw, 5rem);
+          margin-bottom: 1rem;
+          background: linear-gradient(135deg, #fff, #f97316, #0ea5e9);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: fadeInUp 0.8s ease-out;
+        }
+
+        .hero-content p {
+          font-size: 1.5rem;
+          color: #cbd5e1;
+          animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .container {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 0 2rem 4rem;
+          position: relative;
+          z-index: 1;
+        }
+
+        .filter-bar {
+          margin-bottom: 3rem;
+          text-align: center;
+        }
+
+        .filter-bar h3 {
+          color: #f97316;
+          margin-bottom: 1.5rem;
+          font-size: 1.5rem;
+        }
+
+        .filter-buttons {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          flex-wrap: wrap;
+        }
+
+        .filter-btn {
+          padding: 0.875rem 2rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 2px solid rgba(249, 115, 22, 0.2);
+          border-radius: 50px;
+          color: #f8fafc;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+
+        .filter-btn:hover {
+          background: rgba(249, 115, 22, 0.1);
+          border-color: #f97316;
+          transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+          background: linear-gradient(135deg, #f97316, #ea580c);
+          border-color: #f97316;
+          box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
+        }
+
+        .loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          gap: 1rem;
+        }
+
+        .spinner {
+          width: 50px;
+          height: 50px;
+          border: 4px solid rgba(249, 115, 22, 0.2);
+          border-top-color: #f97316;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        .rooms-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+          gap: 2.5rem;
+        }
+
+        .room-card {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          border-radius: 24px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: cardSlideUp 0.6s ease-out both;
+        }
+
+        @keyframes cardSlideUp {
+          from {
+            opacity: 0;
+            transform: translateY(40px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .room-card:hover {
+          transform: translateY(-10px);
+          border-color: #f97316;
+          box-shadow: 0 25px 60px rgba(249, 115, 22, 0.3);
+        }
+
+        .room-gallery-preview {
+          position: relative;
+          height: 250px;
+          background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(14, 165, 233, 0.1));
+          overflow: hidden;
+        }
+
+        .main-image {
+          height: 180px;
+          overflow: hidden;
+        }
+
+        .thumbnail-strip {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.5rem;
+          padding: 0 1rem;
+          margin-top: -20px;
+        }
+
+        .thumbnail {
+          height: 60px;
+          background: rgba(15, 23, 42, 0.8);
+          backdrop-filter: blur(5px);
+          border: 1px solid rgba(249, 115, 22, 0.3);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .image-count {
+          position: absolute;
+          top: 1rem;
+          right: 1rem;
+          background: rgba(15, 23, 42, 0.9);
+          backdrop-filter: blur(10px);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.85rem;
+          border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .room-info {
+          padding: 1.5rem;
+        }
+
+        .room-header {
+          margin-bottom: 1rem;
+        }
+
+        .room-header h3 {
+          font-size: 1.5rem;
+          margin-bottom: 0.5rem;
+          color: #f8fafc;
+        }
+
+        .room-highlights {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .highlight-badge {
+          padding: 0.25rem 0.75rem;
+          background: rgba(249, 115, 22, 0.2);
+          border: 1px solid rgba(249, 115, 22, 0.4);
+          border-radius: 12px;
+          font-size: 0.75rem;
+          color: #f97316;
+          font-weight: 600;
+        }
+
+        .room-meta {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .meta-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #cbd5e1;
+          font-size: 0.9rem;
+        }
+
+        .meta-item .icon {
+          font-size: 1.2rem;
+        }
+
+        .room-description {
+          color: #94a3b8;
+          line-height: 1.6;
+          margin-bottom: 1rem;
+        }
+
+        .amenities-preview {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .amenity-tag {
+          padding: 0.4rem 0.8rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          border-radius: 8px;
+          font-size: 0.85rem;
+          color: #cbd5e1;
+        }
+
+        .more-amenities {
+          padding: 0.4rem 0.8rem;
+          background: rgba(249, 115, 22, 0.1);
+          border: 1px solid rgba(249, 115, 22, 0.3);
+          border-radius: 8px;
+          font-size: 0.85rem;
+          color: #f97316;
+          font-weight: 600;
+        }
+
+        .room-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-top: 1rem;
+          border-top: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .pricing {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .original-price {
+          font-size: 0.9rem;
+          color: #64748b;
+          text-decoration: line-through;
+        }
+
+        .current-price {
+          font-size: 1.8rem;
+          font-weight: 700;
+          color: #f97316;
+        }
+
+        .price-label {
+          font-size: 0.85rem;
+          color: #94a3b8;
+        }
+
+        .details-btn {
+          padding: 0.875rem 1.5rem;
+          background: linear-gradient(135deg, #f97316, #ea580c);
+          border: none;
+          border-radius: 12px;
+          color: white;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+
+        .details-btn:hover {
+          transform: translateX(5px);
+          box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
+        }
+
+        .no-results {
+          text-align: center;
+          padding: 4rem 2rem;
+        }
+
+        .no-results-icon {
+          font-size: 5rem;
+          margin-bottom: 1rem;
+          opacity: 0.5;
+        }
+
+        .no-results h3 {
+          font-size: 2rem;
+          margin-bottom: 0.5rem;
+          color: #f97316;
+        }
+
+        .no-results p {
+          color: #94a3b8;
+        }
+
+        .modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(15, 23, 42, 0.95);
+          backdrop-filter: blur(10px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 2rem;
+          animation: fadeIn 0.3s ease-out;
+          overflow-y: auto;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .modal-content {
+          background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+          backdrop-filter: blur(20px);
+          border: 2px solid rgba(249, 115, 22, 0.3);
+          border-radius: 30px;
+          max-width: 900px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          position: relative;
+          animation: scaleIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .close-btn {
+          position: sticky;
+          top: 1.5rem;
+          right: 1.5rem;
+          float: right;
+          width: 45px;
+          height: 45px;
+          border-radius: 50%;
+          background: rgba(249, 115, 22, 0.2);
+          border: 1px solid rgba(249, 115, 22, 0.4);
+          color: #f8fafc;
+          font-size: 1.8rem;
+          cursor: pointer;
+          transition: all 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10;
+        }
+
+        .close-btn:hover {
+          background: #f97316;
+          transform: rotate(90deg);
+        }
+
+        .gallery {
+          padding: 2rem 2rem 1rem;
+        }
+
+        .gallery-main {
+          position: relative;
+          height: 350px;
+          background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(14, 165, 233, 0.1));
+          border-radius: 20px;
+          overflow: hidden;
+          margin-bottom: 1rem;
+        }
+
+        .gallery-image {
+          animation: imageZoom 0.3s ease-out;
+        }
+
+        @keyframes imageZoom {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .gallery-nav {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 45px;
+          height: 45px;
+          border-radius: 50%;
+          background: rgba(15, 23, 42, 0.9);
+          border: 1px solid rgba(249, 115, 22, 0.3);
+          color: #f8fafc;
+          font-size: 1.5rem;
+          cursor: pointer;
+          transition: all 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .gallery-nav:hover {
+          background: #f97316;
+          transform: translateY(-50%) scale(1.1);
+        }
+
+        .gallery-nav.prev {
+          left: 1rem;
+        }
+
+        .gallery-nav.next {
+          right: 1rem;
+        }
+
+        .gallery-counter {
+          position: absolute;
+          bottom: 1rem;
+          right: 1rem;
+          background: rgba(15, 23, 42, 0.9);
+          padding: 0.5rem 1rem;
+          border-radius: 20px;
+          font-size: 0.9rem;
+        }
+
+        .gallery-thumbnails {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+          gap: 0.75rem;
+        }
+
+        .gallery-thumb {
+          aspect-ratio: 1;
+          background: rgba(255, 255, 255, 0.05);
+          border: 2px solid rgba(249, 115, 22, 0.2);
+          border-radius: 12px;
+          overflow: hidden;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+
+        .gallery-thumb:hover {
+          border-color: #f97316;
+          transform: scale(1.05);
+        }
+
+        .gallery-thumb.active {
+          border-color: #f97316;
+          background: rgba(249, 115, 22, 0.2);
+        }
+
+        .modal-details {
+          padding: 0 2rem 2rem;
+        }
+
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+          gap: 2rem;
+        }
+
+        .modal-header h2 {
+          font-size: 2.5rem;
+          margin-bottom: 0.75rem;
+          background: linear-gradient(135deg, #fff, #f97316);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .modal-highlights {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .highlight-pill {
+          padding: 0.5rem 1rem;
+          background: rgba(249, 115, 22, 0.2);
+          border: 1px solid rgba(249, 115, 22, 0.4);
+          border-radius: 20px;
+          font-size: 0.9rem;
+          color: #f97316;
+          font-weight: 600;
+        }
+
+        .modal-pricing {
+          text-align: right;
+        }
+
+        .modal-original-price {
+          display: block;
+          font-size: 1rem;
+          color: #64748b;
+          text-decoration: line-through;
+        }
+
+        .modal-current-price {
+          display: block;
+          font-size: 2.5rem;
+          font-weight: 700;
+          color: #f97316;
+        }
+
+        .modal-price-label {
+          display: block;
+          font-size: 0.9rem;
+          color: #94a3b8;
+        }
+
+        .modal-meta-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+
+        .modal-meta-item {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          border-radius: 16px;
+        }
+
+        .meta-icon {
+          font-size: 2rem;
+        }
+
+        .modal-meta-item strong {
+          display: block;
+          color: #f97316;
+          margin-bottom: 0.25rem;
+        }
+
+        .modal-meta-item p {
+          color: #cbd5e1;
+          margin: 0;
+        }
+
+        .modal-section {
+          margin-bottom: 2rem;
+        }
+
+        .modal-section h3 {
+          font-size: 1.5rem;
+          color: #f97316;
+          margin-bottom: 1rem;
+        }
+
+        .modal-section p {
+          color: #cbd5e1;
+          line-height: 1.8;
+        }
+
+        .amenities-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1rem;
+        }
+
+        .amenity-item {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(249, 115, 22, 0.2);
+          border-radius: 10px;
+          color: #cbd5e1;
+          transition: all 0.3s;
+        }
+
+        .amenity-item:hover {
+          background: rgba(249, 115, 22, 0.1);
+          border-color: #f97316;
+        }
+
+        .amenity-item .check {
+          color: #22c55e;
+          font-weight: 700;
+        }
+
+        .modal-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+          margin-top: 2rem;
+        }
+
+        .book-btn {
+          padding: 1.2rem 2rem;
+          border-radius: 12px;
+          font-size: 1.1rem;
+          font-weight: 600;
+          text-align: center;
+          text-decoration: none;
+          transition: all 0.3s;
+          display: block;
+        }
+
+        .book-btn.primary {
+          background: linear-gradient(135deg, #f97316, #ea580c);
+          color: white;
+          box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
+          border: none;
+        }
+
+        .book-btn.primary:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 15px 40px rgba(249, 115, 22, 0.6);
+        }
+
+        .book-btn.secondary {
+          background: transparent;
+          color: #f97316;
+          border: 2px solid #f97316;
+        }
+
+        .book-btn.secondary:hover {
+          background: rgba(249, 115, 22, 0.1);
+          transform: translateY(-3px);
+        }
+
+        @media (max-width: 968px) {
+          .rooms-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .modal-header {
+            flex-direction: column;
+          }
+
+          .modal-pricing {
+            text-align: left;
+          }
+
+          .modal-meta-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .amenities-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .modal-actions {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
     </div>
   );
 }
