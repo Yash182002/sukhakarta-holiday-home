@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 type Place = {
   id: string;
@@ -26,7 +26,7 @@ const CATEGORIES = [
 ];
 
 export default function PlacesToVisit() {
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState("all");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,46 +35,39 @@ export default function PlacesToVisit() {
   useEffect(() => {
     loadPlaces();
 
-    // Set up real-time subscription
     const subscription = supabase
-      .channel('public-places-changes')
+      .channel("public-places-changes")
       .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'places'
-        },
-        (payload) => {
-          console.log('Place change detected:', payload);
-          loadPlaces();
-        }
+        "postgres_changes",
+        { event: "*", schema: "public", table: "places" },
+        () => loadPlaces()
       )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(subscription);
     };
   }, []);
 
   async function loadPlaces() {
     setLoading(true);
     const { data, error } = await supabase
-      .from('places')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .from("places")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error('Error loading places:', error);
-    } else if (data) {
+    if (!error && data) {
       setPlaces(data);
+    } else {
+      console.error("Error loading places:", error);
     }
     setLoading(false);
   }
 
-  const filteredPlaces = activeFilter === 'all' 
-    ? places 
-    : places.filter(p => p.category === activeFilter);
+  const filteredPlaces =
+    activeFilter === "all"
+      ? places
+      : places.filter((p) => p.category === activeFilter);
 
   const openPlaceDetails = (place: Place) => {
     setSelectedPlace(place);
@@ -87,14 +80,14 @@ export default function PlacesToVisit() {
   };
 
   const nextImage = () => {
-    if (!selectedPlace || !selectedPlace.images) return;
+    if (!selectedPlace?.images?.length) return;
     setActiveImageIndex((prev) =>
       prev === selectedPlace.images.length - 1 ? 0 : prev + 1
     );
   };
 
   const prevImage = () => {
-    if (!selectedPlace || !selectedPlace.images) return;
+    if (!selectedPlace?.images?.length) return;
     setActiveImageIndex((prev) =>
       prev === 0 ? selectedPlace.images.length - 1 : prev - 1
     );
@@ -102,24 +95,27 @@ export default function PlacesToVisit() {
 
   return (
     <div className="places-page">
-      {/* Hero Section */}
+      {/* Hero */}
       <div className="hero">
-        <div className="hero-bg"></div>
         <div className="hero-content">
           <h1>Explore Alibag</h1>
-          <p>Discover the best beaches, forts, and attractions around Sukhakarta Holiday Home</p>
+          <p>
+            Discover the best beaches, forts, and attractions around Sukhakarta
+            Holiday Home
+          </p>
         </div>
       </div>
 
-      {/* Filter Section */}
+      {/* Filters */}
       <div className="container">
         <div className="filter-section">
-          {CATEGORIES.map((cat, idx) => (
+          {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
-              className={`filter-btn ${activeFilter === cat.id ? 'active' : ''}`}
+              className={`filter-btn ${
+                activeFilter === cat.id ? "active" : ""
+              }`}
               onClick={() => setActiveFilter(cat.id)}
-              style={{ animationDelay: `${idx * 0.1}s` }}
             >
               {cat.name}
             </button>
@@ -135,47 +131,48 @@ export default function PlacesToVisit() {
           <>
             {/* Places Grid */}
             <div className="places-grid">
-              {filteredPlaces.map((place, idx) => (
+              {filteredPlaces.map((place) => (
                 <div
                   key={place.id}
                   className="place-card"
                   onClick={() => openPlaceDetails(place)}
-                  style={{ animationDelay: `${idx * 0.1}s` }}
                 >
-                  {place.images && place.images.length > 0 ? (
+                  {place.images?.length > 0 && (
                     <div className="place-image-container">
-                      <img 
-                        src={place.images[0]} 
+                      <img
+                        src={place.images[0]}
                         alt={place.name}
                         className="place-image"
                       />
                       {place.images.length > 1 && (
                         <div className="image-badge">
-                          📷 {place.images.length} photos
+                          {place.images.length} photos
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="place-icon">{getCategoryIcon(place.category)}</div>
                   )}
 
                   <div className="place-content">
                     <h3>{place.name}</h3>
+
                     <div className="place-meta">
-                      <span className="distance">📍 {place.distance}</span>
-                      <span className="time">⏱️ {place.time}</span>
+                      <span>{place.distance}</span>
+                      <span>{place.time}</span>
                     </div>
+
                     <p className="description">{place.description}</p>
+
                     <div className="highlights">
                       {place.highlights.slice(0, 2).map((h, i) => (
-                        <span key={i} className="highlight-tag">{h}</span>
+                        <span key={i} className="highlight-tag">
+                          {h}
+                        </span>
                       ))}
                     </div>
+
                     <div className="card-footer">
-                      <div className="rating">
-                        ⭐ {place.rating}
-                      </div>
-                      <span className="view-more">View Details →</span>
+                      <div className="rating">{place.rating}</div>
+                      <span className="view-more">View Details</span>
                     </div>
                   </div>
                 </div>
@@ -184,7 +181,6 @@ export default function PlacesToVisit() {
 
             {filteredPlaces.length === 0 && (
               <div className="no-results">
-                <div className="no-results-icon">📍</div>
                 <h3>No places found</h3>
                 <p>Try selecting a different category</p>
               </div>
@@ -193,21 +189,23 @@ export default function PlacesToVisit() {
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Modal */}
       {selectedPlace && (
         <div className="modal" onClick={closePlaceDetails}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <button className="close-btn" onClick={closePlaceDetails}>×</button>
-            
-            {/* Image Gallery */}
-            {selectedPlace.images && selectedPlace.images.length > 0 && (
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={closePlaceDetails}>
+              ×
+            </button>
+
+            {selectedPlace.images?.length > 0 && (
               <div className="gallery">
                 <div className="gallery-main">
-                  <img 
-                    src={selectedPlace.images[activeImageIndex]} 
+                  <img
+                    src={selectedPlace.images[activeImageIndex]}
                     alt={selectedPlace.name}
                     className="gallery-image"
                   />
+
                   {selectedPlace.images.length > 1 && (
                     <>
                       <button onClick={prevImage} className="gallery-nav prev">
@@ -217,7 +215,8 @@ export default function PlacesToVisit() {
                         ›
                       </button>
                       <div className="gallery-counter">
-                        {activeImageIndex + 1} / {selectedPlace.images.length}
+                        {activeImageIndex + 1} /{" "}
+                        {selectedPlace.images.length}
                       </div>
                     </>
                   )}
@@ -243,47 +242,43 @@ export default function PlacesToVisit() {
 
             <div className="modal-details">
               <h2>{selectedPlace.name}</h2>
-              
+
               <div className="modal-meta">
-                <div className="meta-item">
-                  <span className="meta-label">Distance</span>
-                  <span className="meta-value">📍 {selectedPlace.distance}</span>
-                </div>
-                <div className="meta-item">
-                  <span className="meta-label">Travel Time</span>
-                  <span className="meta-value">⏱️ {selectedPlace.time}</span>
-                </div>
-                <div className="meta-item">
-                  <span className="meta-label">Rating</span>
-                  <span className="meta-value">⭐ {selectedPlace.rating}</span>
-                </div>
+                <div>{selectedPlace.distance}</div>
+                <div>{selectedPlace.time}</div>
+                <div>{selectedPlace.rating}</div>
               </div>
 
-              <p className="modal-description">{selectedPlace.description}</p>
+              <p className="modal-description">
+                {selectedPlace.description}
+              </p>
 
               <div className="modal-highlights">
                 <h4>Highlights</h4>
                 <div className="highlights-grid">
                   {selectedPlace.highlights.map((h, i) => (
-                    <span key={i} className="highlight-pill">{h}</span>
+                    <span key={i} className="highlight-pill">
+                      {h}
+                    </span>
                   ))}
                 </div>
               </div>
 
               <div className="modal-actions">
-                {selectedPlace.location_url ? (
-                  <a 
-                    href={selectedPlace.location_url} 
-                    target="_blank" 
+                {selectedPlace.location_url && (
+                  <a
+                    href={selectedPlace.location_url}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="action-btn primary"
                   >
                     Get Directions
                   </a>
-                ) : (
-                  <button className="action-btn primary">Get Directions</button>
                 )}
-                <button onClick={closePlaceDetails} className="action-btn secondary">
+                <button
+                  onClick={closePlaceDetails}
+                  className="action-btn secondary"
+                >
                   Close
                 </button>
               </div>
@@ -291,6 +286,8 @@ export default function PlacesToVisit() {
           </div>
         </div>
       )}
+    </div>
+ )}
 
       <style jsx>{`
         .places-page {
