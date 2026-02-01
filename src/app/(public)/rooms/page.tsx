@@ -98,7 +98,6 @@ export default function RoomsPage() {
       originalPrice: Math.round(room.base_price * 1.25),
       maxGuests: room.max_guests,
       size: "350 sq ft",
-      view: "Garden View",
       images: room.images && room.images.length > 0 ? room.images : ['/placeholder-room.jpg'],
       amenities: room.amenities || [],
       description: room.description || "Beautiful room with modern amenities",
@@ -111,9 +110,8 @@ export default function RoomsPage() {
   ============================ */
   const priceRanges = [
     { id: "all", label: "All Rooms", min: 0, max: Infinity },
-    { id: "budget", label: "Under ₹3000", min: 0, max: 3000 },
-    { id: "mid", label: "₹3000 - ₹4500", min: 3000, max: 4500 },
-    { id: "luxury", label: "Above ₹4500", min: 4500, max: Infinity },
+    { id: "Non-AC", label: "Under ₹2500", min: 0, max: 2500 },
+    { id: "AC", label: "₹2500 - ₹3000", min: 2500, max: 3000 },
   ];
 
   const filteredRooms = rooms.filter((room) => {
@@ -251,12 +249,7 @@ export default function RoomsPage() {
                       <span>Up to {room.maxGuests} Guests</span>
                     </span>
                     <span className="meta-item">
-                      <span className="icon">📏</span>
                       <span>{room.size}</span>
-                    </span>
-                    <span className="meta-item">
-                      <span className="icon">🪟</span>
-                      <span>{room.view}</span>
                     </span>
                   </div>
 
@@ -292,7 +285,6 @@ export default function RoomsPage() {
         {/* Empty */}
         {!loading && filteredRooms.length === 0 && (
           <div className="no-results">
-            <div className="no-results-icon">🏨</div>
             <h3>No rooms found</h3>
             <p>Try adjusting your filters</p>
           </div>
@@ -386,21 +378,18 @@ export default function RoomsPage() {
 
               <div className="modal-meta-grid">
                 <div className="modal-meta-item">
-                  <span className="meta-icon">👥</span>
                   <div>
                     <strong>Max Guests</strong>
                     <p>Up to {selectedRoom.maxGuests} people</p>
                   </div>
                 </div>
                 <div className="modal-meta-item">
-                  <span className="meta-icon">📏</span>
                   <div>
                     <strong>Room Size</strong>
                     <p>{selectedRoom.size}</p>
                   </div>
                 </div>
                 <div className="modal-meta-item">
-                  <span className="meta-icon">🪟</span>
                   <div>
                     <strong>View</strong>
                     <p>{selectedRoom.view}</p>
