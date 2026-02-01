@@ -238,7 +238,7 @@ export default function BookingPage() {
                 <input 
                   className="input" 
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="Your Mail"
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })} 
                 />
@@ -311,7 +311,7 @@ export default function BookingPage() {
 
             {availableRooms.length === 0 && !message && (
               <div className="empty-state">
-                <div className="empty-icon">🏨</div>
+                <div className="empty-icon"></div>
                 <p>Select dates to see available rooms</p>
               </div>
             )}
@@ -362,7 +362,7 @@ export default function BookingPage() {
                   <span>₹{totalAmount()}</span>
                 </div>
                 <div className="payment-info">
-                  <span className="info-icon">💳</span>
+                  <span className="info-icon"></span>
                   <span>Full payment required to confirm booking</span>
                 </div>
 
