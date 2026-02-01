@@ -17,12 +17,12 @@ type Place = {
 };
 
 const CATEGORIES = [
-  { id: 'all', name: 'All Places', icon''},
-  { id: 'beach', name: 'Beaches', icon''},
-  { id: 'historical', name: 'Historical', icon''},
-  { id: 'spiritual', name: 'Spiritual', icon''},
-  { id: 'adventure', name: 'Adventure', icon''},
-  { id: 'nature', name: 'Nature', icon''}
+  { id: "all", name: "All Places" },
+  { id: "beach", name: "Beaches" },
+  { id: "historical", name: "Historical" },
+  { id: "spiritual", name: "Spiritual" },
+  { id: "adventure", name: "Adventure" },
+  { id: "nature", name: "Nature" },
 ];
 
 export default function PlacesToVisit() {
@@ -100,11 +100,6 @@ export default function PlacesToVisit() {
     );
   };
 
-  const getCategoryIcon = (category: string) => {
-    const cat = CATEGORIES.find(c => c.id === category);
-    return cat ? cat.icon : '📍';
-  };
-
   return (
     <div className="places-page">
       {/* Hero Section */}
@@ -126,8 +121,7 @@ export default function PlacesToVisit() {
               onClick={() => setActiveFilter(cat.id)}
               style={{ animationDelay: `${idx * 0.1}s` }}
             >
-              <span className="filter-icon">{cat.icon}</span>
-              <span>{cat.name}</span>
+              {cat.name}
             </button>
           ))}
         </div>
@@ -248,7 +242,6 @@ export default function PlacesToVisit() {
             )}
 
             <div className="modal-details">
-              <div className="modal-icon">{getCategoryIcon(selectedPlace.category)}</div>
               <h2>{selectedPlace.name}</h2>
               
               <div className="modal-meta">
