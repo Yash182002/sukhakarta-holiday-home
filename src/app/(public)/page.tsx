@@ -87,7 +87,6 @@ export default function HomePage() {
               <div className="hero-buttons">
                 <Link href={heroContent.button_link} className="cta-button">
                   {heroContent.button_text}
-                  <span className="arrow">→</span>
                 </Link>
               </div>
             )}
@@ -126,7 +125,6 @@ export default function HomePage() {
               {ctaContent.button_text && ctaContent.button_link && (
                 <Link href={ctaContent.button_link} className="cta-button">
                   {ctaContent.button_text}
-                  <span className="arrow">→</span>
                 </Link>
               )}
             </div>
