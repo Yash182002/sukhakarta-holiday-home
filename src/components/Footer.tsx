@@ -123,26 +123,6 @@ export default function Footer() {
           </div>
         </div>
 
-        /* {/* Newsletter Section */}
-        <div className="newsletter-section">
-          <div className="newsletter-content">
-            <div className="newsletter-text">
-              <h3>Subscribe to Our Newsletter</h3>
-              <p>Get special offers and updates delivered to your inbox</p>
-            </div>
-            <div className="newsletter-form">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="newsletter-input"
-              />
-              <button className="newsletter-btn">
-                Subscribe →
-              </button>
-            </div>
-          </div>
-        </div> */
-
         {/* Bottom Bar */}
         <div className="footer-bottom">
           <div className="footer-bottom-content">
