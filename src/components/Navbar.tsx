@@ -133,7 +133,6 @@ export default function Navbar() {
               style={{ animationDelay: `${idx * 0.05}s` }}
             >
               <span className="nav-text">{link.name}</span>
-              <span className="nav-arrow">→</span>
             </Link>
           ))}
         </nav>
