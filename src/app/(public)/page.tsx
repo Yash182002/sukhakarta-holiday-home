@@ -461,6 +461,61 @@ export default function HomePage() {
             padding: 2rem;
           }
         }
+
+  /* ============================================
+           HOMEPAGE MOBILE BUTTON FIX
+    ============================================ */
+        
+        /* Force button visibility on all screen sizes */
+        .cta-button {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.9rem 1.8rem;
+          background: linear-gradient(135deg, #f97316, #ea580c);
+          color: white;
+          text-decoration: none;
+          border-radius: 999px;
+          font-weight: 700;
+          font-size: 1rem;
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
+          width: fit-content;
+          max-width: fit-content;
+          white-space: nowrap;
+          position: relative;
+          z-index: 10;
+          margin-top: 2rem;
+          visibility: visible !important;
+          opacity: 1 !important;
+        }
+        
+        /* Ensure hero content centers the button */
+        .hero-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+        
+        /* Mobile specific fixes */
+        @media (max-width: 768px) {
+          .cta-button {
+            padding: 1rem 2rem !important;
+            font-size: 1rem !important;
+            display: inline-flex !important;
+            margin: 2rem auto 0 !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .cta-button {
+            padding: 0.875rem 1.75rem !important;
+            font-size: 0.95rem !important;
+          }
+        }
+        
       `}</style>
     </div>
   );
