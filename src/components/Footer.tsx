@@ -121,6 +121,7 @@ export default function Footer() {
               </div>
             </div>
           </div>
+        </div>
 
         {/* Bottom Bar */}
         <div className="footer-bottom">
