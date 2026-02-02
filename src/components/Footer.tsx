@@ -123,7 +123,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Newsletter Section */}
+        /* {/* Newsletter Section */}
         <div className="newsletter-section">
           <div className="newsletter-content">
             <div className="newsletter-text">
@@ -141,7 +141,7 @@ export default function Footer() {
               </button>
             </div>
           </div>
-        </div>
+        </div> */
 
         {/* Bottom Bar */}
         <div className="footer-bottom">
