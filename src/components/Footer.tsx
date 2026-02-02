@@ -40,7 +40,6 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="footer-brand">
             <div className="brand-logo">
-              <div className="brand-icon">🏖️</div>
               <div>
                 <h3 className="brand-name">Sukhakarta</h3>
                 <p className="brand-tagline">Holiday Home</p>
