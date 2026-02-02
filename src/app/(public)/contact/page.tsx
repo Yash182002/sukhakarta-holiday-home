@@ -15,9 +15,49 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Professional SVG Icons
+  const PhoneIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+  );
+
+  const WhatsAppIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+    </svg>
+  );
+
+  const MailIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+  );
+
+  const MapPinIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+  );
+
+  const ArrowIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="5" y1="12" x2="19" y2="12"/>
+      <polyline points="12 5 19 12 12 19"/>
+    </svg>
+  );
+
+  const CheckIcon = () => (
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  );
+
   const contactMethods = [
     {
-      icon: "📞",
+      icon: <PhoneIcon />,
       title: "Call Us",
       details: "+91 80875 41496",
       subtext: "Mon - Sun, 8 AM - 10 PM",
@@ -25,7 +65,7 @@ export default function ContactPage() {
       color: "#0ea5e9"
     },
     {
-      icon: "💬",
+      icon: <WhatsAppIcon />,
       title: "WhatsApp",
       details: "Quick Response",
       subtext: "Available 24/7",
@@ -33,7 +73,7 @@ export default function ContactPage() {
       color: "#22c55e"
     },
     {
-      icon: "✉️",
+      icon: <MailIcon />,
       title: "Email",
       details: "sukhakartaholidayhome@gmail.com",
       subtext: "Response within 24 hours",
@@ -41,7 +81,7 @@ export default function ContactPage() {
       color: "#f97316"
     },
     {
-      icon: "📍",
+      icon: <MapPinIcon />,
       title: "Visit Us",
       details: "Alibag, Maharashtra",
       subtext: "Get Directions",
@@ -67,7 +107,7 @@ export default function ContactPage() {
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const message = `🏖️ Contact Form Submission
+    const message = `Contact Form Submission
 
 Name: ${formData.name}
 Email: ${formData.email}
@@ -132,14 +172,12 @@ ${formData.message}`;
               <h3>{method.title}</h3>
               <p className="method-details">{method.details}</p>
               <p className="method-subtext">{method.subtext}</p>
-              <div className="method-arrow">→</div>
+              <div className="method-arrow"><ArrowIcon /></div>
             </a>
           ))}
         </div>
 
-        {/* Main Content Grid */}
         <div className="content-grid">
-          {/* Contact Form */}
           <div className="form-section">
             <h2>Send Us a Message</h2>
             <p className="form-subtitle">Fill out the form below and we'll get back to you soon</p>
@@ -208,12 +246,11 @@ ${formData.message}`;
               {isSubmitting ? (
                 <span className="loader">Sending...</span>
               ) : (
-                <>Send Message <span className="btn-arrow">→</span></>
+                <>Send Message <span className="btn-arrow"><ArrowIcon /></span></>
               )}
             </button>
           </div>
 
-          {/* Info Sidebar */}
           <div className="info-section">
             <div className="info-card">
               <h3>Location</h3>
@@ -249,15 +286,12 @@ ${formData.message}`;
               <h3>Follow Us</h3>
               <div className="social-links">
                 <a href="#" className="social-btn">
-                  <span>f</span>
                   <span>Facebook</span>
                 </a>
                 <a href="#" className="social-btn">
-                  <span>📷</span>
                   <span>Instagram</span>
                 </a>
                 <a href="#" className="social-btn">
-                  <span>🐦</span>
                   <span>Twitter</span>
                 </a>
               </div>
@@ -265,11 +299,10 @@ ${formData.message}`;
           </div>
         </div>
 
-        {/* Map Section */}
         <div className="map-section" id="map">
           <h2>Find Us</h2>
           <div className="map-placeholder">
-            <div className="map-icon">📍</div>
+            <div className="map-icon"><MapPinIcon /></div>
             <h3>Sukhakarta Holiday Home</h3>
             <p>Alibag, Maharashtra, India</p>
             <button className="map-btn">Open in Google Maps</button>
@@ -277,11 +310,10 @@ ${formData.message}`;
         </div>
       </div>
 
-      {/* Success Modal */}
       {showSuccess && (
         <div className="modal">
           <div className="modal-content">
-            <div className="success-icon">✓</div>
+            <div className="success-icon"><CheckIcon /></div>
             <h3>Message Sent!</h3>
             <p>We'll get back to you as soon as possible</p>
           </div>
@@ -495,14 +527,11 @@ ${formData.message}`;
         }
 
         .method-icon {
-          font-size: 3rem;
+          color: var(--hover-color);
           margin-bottom: 1rem;
-          animation: bounce 2s ease-in-out infinite;
-        }
-
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .method-card h3 {
@@ -533,9 +562,11 @@ ${formData.message}`;
 
         .method-arrow {
           margin-top: 1rem;
-          font-size: 1.5rem;
           color: var(--hover-color);
           transition: transform 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         @media (hover: hover) {
@@ -701,6 +732,8 @@ ${formData.message}`;
 
         .btn-arrow {
           transition: transform 0.3s;
+          display: flex;
+          align-items: center;
         }
 
         @media (hover: hover) {
@@ -809,10 +842,6 @@ ${formData.message}`;
           }
         }
 
-        .social-btn span:first-child {
-          font-size: 1.5rem;
-        }
-
         .map-section {
           animation: fadeInUp 0.8s ease-out 0.4s both;
           width: 100%;
@@ -849,9 +878,11 @@ ${formData.message}`;
         }
 
         .map-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
-          animation: pulse 2s ease-in-out infinite;
+          color: #f97316;
+          margin: 0 auto 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .map-placeholder h3 {
@@ -945,7 +976,6 @@ ${formData.message}`;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 3rem;
           color: white;
           animation: bounce 0.6s ease-out;
         }
