@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // --- Types ---
 type Place = {
@@ -47,8 +48,6 @@ export default function PlacesToVisit() {
 
   useEffect(() => {
     loadPlaces();
-
-    import { useDebounce } from "@/hooks/useDebounce";
 
 const debouncedLoadPlaces = useDebounce(loadPlaces, 300);
 
