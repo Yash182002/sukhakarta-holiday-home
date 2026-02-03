@@ -35,9 +35,19 @@ export default function AdminDashboard() {
   }
 
   async function loadStats() {
-    const { data: bookings } = await supabase
-      .from("bookings")
-      .select("status");
+    const { count: totalCount } = await supabase
+  .from("bookings")
+  .select("*", { count: 'exact', head: true });
+
+const { count: pendingCount } = await supabase
+  .from("bookings")
+  .select("*", { count: 'exact', head: true })
+  .eq("status", "pending");
+
+const { count: confirmedCount } = await supabase
+  .from("bookings")
+  .select("*", { count: 'exact', head: true })
+  .eq("status", "confirmed");
 
     if (bookings) {
       setStats({
