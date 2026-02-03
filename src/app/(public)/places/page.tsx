@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useDebounce } from "@/hooks/useDebounce";
 
 // --- Types ---
 type Place = {
@@ -46,40 +45,9 @@ export default function PlacesToVisit() {
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // ✅ Hook MUST be here (top-level)
-  const debouncedLoadPlaces = useDebounce(loadPlaces, 300);
-
-  // ✅ Single useEffect for initial load + realtime
-  useEffect(() => {
-    loadPlaces();
-
-    const channel = supabase
-      .channel("places-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "places" },
-        (payload) => {
-          if (
-            payload.eventType === "INSERT" ||
-            payload.eventType === "UPDATE" ||
-            (payload.eventType === "DELETE" && payload.old)
-          ) {
-            debouncedLoadPlaces();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [debouncedLoadPlaces]);
-
-  // ------------------------
-  // Data loader
-  // ------------------------
-  async function loadPlaces() {
-    setLoading(true);
+  // 1. Wrap loadPlaces in useCallback to ensure function stability
+  const loadPlaces = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
 
     const { data, error } = await supabase
       .from("places")
@@ -92,8 +60,30 @@ export default function PlacesToVisit() {
       console.error("Error loading places:", error);
     }
 
-    setLoading(false);
-  }
+    if (showSpinner) setLoading(false);
+  }, []);
+
+  // 2. Single useEffect for initial load + realtime subscription
+  useEffect(() => {
+    // Initial load with spinner
+    loadPlaces(true);
+
+    const channel = supabase
+      .channel("places-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "places" },
+        () => {
+          // Refresh data silently (no spinner) when DB changes
+          loadPlaces(false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadPlaces]);
 
   const filteredPlaces =
     activeFilter === "all"
@@ -130,6 +120,7 @@ export default function PlacesToVisit() {
     <div className="places-page">
       {/* Hero */}
       <div className="hero">
+        <div className="hero-bg"></div>
         <div className="hero-content">
           <h1>Explore Alibag</h1>
           <p>
@@ -284,9 +275,18 @@ export default function PlacesToVisit() {
               <h2>{selectedPlace.name}</h2>
 
               <div className="modal-meta">
-                <div>Distance: {selectedPlace.distance}</div>
-                <div>Time: {selectedPlace.time}</div>
-                <div>Rating: {selectedPlace.rating}</div>
+                <div className="meta-item">
+                  <span className="meta-label">Distance</span>
+                  <span className="meta-value">{selectedPlace.distance}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Time</span>
+                  <span className="meta-value">{selectedPlace.time}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Rating</span>
+                  <span className="meta-value">{selectedPlace.rating}/5</span>
+                </div>
               </div>
 
               <p className="modal-description">{selectedPlace.description}</p>
@@ -466,10 +466,6 @@ export default function PlacesToVisit() {
           box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
         }
 
-        .filter-icon {
-          font-size: 1.5rem;
-        }
-
         .loading {
           display: flex;
           flex-direction: column;
@@ -572,19 +568,6 @@ export default function PlacesToVisit() {
           backdrop-filter: blur(10px);
         }
 
-        .place-icon {
-          font-size: 4rem;
-          text-align: center;
-          padding: 2rem;
-          background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(14, 165, 233, 0.1));
-          animation: float 3s ease-in-out infinite;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-
         .place-content {
           padding: 2rem;
         }
@@ -652,12 +635,6 @@ export default function PlacesToVisit() {
         .no-results {
           text-align: center;
           padding: 4rem 2rem;
-        }
-
-        .no-results-icon {
-          font-size: 5rem;
-          margin-bottom: 1rem;
-          opacity: 0.5;
         }
 
         .no-results h3 {
@@ -847,18 +824,6 @@ export default function PlacesToVisit() {
 
         .modal-details {
           padding: 0 2rem 2rem;
-        }
-
-        .modal-icon {
-          font-size: 5rem;
-          text-align: center;
-          margin-bottom: 1.5rem;
-          animation: bounce 0.6s ease-out;
-        }
-
-        @keyframes bounce {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
         }
 
         .modal-details h2 {
