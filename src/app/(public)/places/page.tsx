@@ -45,12 +45,41 @@ export default function PlacesToVisit() {
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const debouncedLoadPlaces = useDebounce(loadPlaces, 300);
+  // 1. Define loadPlaces with useCallback for stability
+  // Added 'showSpinner' param to prevent UI flashing during realtime updates
+  const loadPlaces = useCallback(async (signal?: AbortSignal, showSpinner = true) => {
+    try {
+      if (showSpinner) setLoading(true);
 
+      const { data, error } = await supabase
+        .from("places")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .abortSignal(signal!); // Pass signal to Supabase
+
+      if (error) throw error;
+
+      if (data) {
+        setPlaces(data);
+      }
+    } catch (error: any) {
+      // Ignore abort errors
+      if (error.name !== 'AbortError' && !signal?.aborted) {
+        console.error("Error loading places:", error);
+      }
+    } finally {
+      if (showSpinner && !signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  // 2. Single useEffect for Initial Load + Realtime Subscription
   useEffect(() => {
     const abortController = new AbortController();
 
-    loadPlaces(abortController.signal);
+    // Initial load (show spinner)
+    loadPlaces(abortController.signal, true);
 
     const channel = supabase
       .channel("places-changes")
@@ -58,71 +87,19 @@ export default function PlacesToVisit() {
         "postgres_changes",
         { event: "*", schema: "public", table: "places" },
         () => {
-          // 🔁 Realtime reloads use SAME signal lifecycle
+          // Realtime update (hide spinner)
           if (!abortController.signal.aborted) {
-            debouncedLoadPlaces(abortController.signal);
+            loadPlaces(abortController.signal, false);
           }
         }
       )
       .subscribe();
 
     return () => {
-      abortController.abort(); // ✅ cancels in-flight fetch
-      supabase.removeChannel(channel);
-    };
-  }, [debouncedLoadPlaces]);
-
-  // 2. Single useEffect for initial load + realtime subscription
-  useEffect(() => {
-    // Initial load with spinner
-    loadPlaces(true);
-
-    const channel = supabase
-      .channel("places-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "places" },
-        () => {
-          // Refresh data silently (no spinner) when DB changes
-          loadPlaces(false);
-        }
-      )
-      .subscribe();
-
-    return () => {
+      abortController.abort(); // Cancel pending fetches
       supabase.removeChannel(channel);
     };
   }, [loadPlaces]);
-
-  
-  // --------------------------------
-  // Loader WITH abort support
-  // --------------------------------
-  async function loadPlaces(signal?: AbortSignal) {
-    try {
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("places")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .abortSignal(signal); // ✅ IMPORTANT
-
-      if (error) throw error;
-
-      if (!signal?.aborted && data) {
-        setPlaces(data);
-      }
-    } catch (error) {
-      if (!signal?.aborted) {
-        console.error("Error loading places:", error);
-      }
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }
 
   const filteredPlaces =
     activeFilter === "all"
