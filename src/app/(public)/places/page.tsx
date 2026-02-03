@@ -46,38 +46,41 @@ export default function PlacesToVisit() {
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
+  // ✅ Hook MUST be here (top-level)
+  const debouncedLoadPlaces = useDebounce(loadPlaces, 300);
+
+  // ✅ Single useEffect for initial load + realtime
   useEffect(() => {
     loadPlaces();
 
-const debouncedLoadPlaces = useDebounce(loadPlaces, 300);
-
-useEffect(() => {
-  loadPlaces();
-
-  const channel = supabase
-    .channel("places-changes")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "places" },
-      (payload) => {
-        if (
-          payload.eventType === "INSERT" ||
-          payload.eventType === "UPDATE" ||
-          (payload.eventType === "DELETE" && payload.old)
-        ) {
-          debouncedLoadPlaces();
+    const channel = supabase
+      .channel("places-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "places" },
+        (payload) => {
+          if (
+            payload.eventType === "INSERT" ||
+            payload.eventType === "UPDATE" ||
+            (payload.eventType === "DELETE" && payload.old)
+          ) {
+            debouncedLoadPlaces();
+          }
         }
-      }
-    )
-    .subscribe();
+      )
+      .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [debouncedLoadPlaces]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [debouncedLoadPlaces]);
 
+  // ------------------------
+  // Data loader
+  // ------------------------
   async function loadPlaces() {
     setLoading(true);
+
     const { data, error } = await supabase
       .from("places")
       .select("*")
@@ -88,6 +91,7 @@ useEffect(() => {
     } else {
       console.error("Error loading places:", error);
     }
+
     setLoading(false);
   }
 
