@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -26,21 +26,8 @@ export default function HomePage() {
   const [ctaContent, setCtaContent] = useState<ContentSection | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadContent();
-
-    // Real-time subscription
-    const subscription = supabase
-      .channel('homepage-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_content' }, loadContent)
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  async function loadContent() {
+  // 1. Wrap loadContent in useCallback to prevent infinite loops in useEffect
+  const loadContent = useCallback(async () => {
     const { data } = await supabase
       .from("homepage_content")
       .select("*");
@@ -52,7 +39,25 @@ export default function HomePage() {
     }
 
     setLoading(false);
-  }
+  }, []);
+
+  // 2. Correct dependency array and cleanup
+  useEffect(() => {
+    loadContent();
+
+    const channel = supabase
+      .channel('homepage-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'homepage_content' },
+        () => loadContent()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadContent]);
 
   if (loading) {
     return (
@@ -305,21 +310,21 @@ export default function HomePage() {
           align-items: center;
           justify-content: center;
           gap: 0.5rem;
-        
+          
           padding: 0.9rem 1.8rem;
           background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
-        
+          
           border-radius: 999px;
           font-weight: 700;
           font-size: 1rem;
-        
+          
           transition: all 0.3s ease;
           box-shadow: 0 10px 40px rgba(249, 115, 22, 0.4);
-        
-          width: fit-content;          
-          max-width: fit-content;      
+          
+          width: fit-content;           
+          max-width: fit-content;       
           white-space: nowrap;
         }
 
@@ -463,7 +468,7 @@ export default function HomePage() {
         }
 
   /* ============================================
-           HOMEPAGE MOBILE BUTTON FIX
+            HOMEPAGE MOBILE BUTTON FIX
     ============================================ */
         
         /* Force button visibility on all screen sizes */
