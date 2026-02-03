@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 /* ---------- TYPES ---------- */
@@ -24,9 +24,22 @@ interface HomeClientProps {
 export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
   const [rooms, setRooms] = useState<Room[]>(initialRooms);
 
+  // 1. Wrap data fetching in useCallback for stability
+  const refreshRooms = useCallback(async () => {
+    console.log('Fetching updated rooms...');
+    const { data } = await supabase
+      .from('rooms')
+      .select('*')
+      .order('created_at', { ascending: true });
+      
+    if (data) {
+      setRooms(data);
+    }
+  }, []);
+
+  // 2. Single useEffect for Realtime Subscription
   useEffect(() => {
-    // Set up real-time subscription
-    const subscription = supabase
+    const channel = supabase
       .channel('home-rooms-changes')
       .on(
         'postgres_changes',
@@ -35,25 +48,17 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
           schema: 'public',
           table: 'rooms'
         },
-        async () => {
+        () => {
           console.log('Room change detected on homepage');
-          // Fetch updated rooms
-          const { data } = await supabase
-            .from('rooms')
-            .select('*')
-            .order('created_at', { ascending: true });
-          
-          if (data) {
-            setRooms(data);
-          }
+          refreshRooms();
         }
       )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [refreshRooms]);
 
   const features = [
     { icon: '🏖️', title: 'Beach Access', description: 'Minutes from pristine beaches' },
@@ -249,7 +254,7 @@ export default function HomeClient({ rooms: initialRooms }: HomeClientProps) {
           max-width: 900px;
           display: flex;
           flex-direction: column;
-          align-items: center;     
+          align-items: center;      
         }
 
         .hero h1 {
