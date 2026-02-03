@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-/* ============================
-   DB ROOM TYPE (MATCH SUPABASE)
-============================ */
 type DBRoom = {
   id: string;
   name: string;
@@ -14,6 +11,7 @@ type DBRoom = {
   description: string | null;
   amenities: string[] | null;
   images: string[] | null;
+  created_at?: string;
 };
 
 /* ============================
@@ -33,6 +31,23 @@ type Room = {
   highlights: string[];
 };
 
+function mapRoom(room: DBRoom): Room {
+  return {
+    id: room.id,
+    name: room.name,
+    price: room.base_price,
+    originalPrice: Math.round(room.base_price * 1.25),
+    maxGuests: room.max_guests,
+    size: "350 sq ft",
+    view: "Garden View",
+    // Ensure at least one image exists to prevent crashes
+    images: room.images && room.images.length > 0 ? room.images : ['/placeholder-room.jpg'],
+    amenities: room.amenities || [],
+    description: room.description || "Beautiful room with modern amenities",
+    highlights: room.amenities?.slice(0, 3) || [],
+  };
+}
+
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,14 +55,30 @@ export default function RoomsPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [filterPrice, setFilterPrice] = useState("all");
 
-  /* ============================
-     FETCH ROOMS FROM SUPABASE
-  ============================ */
-  useEffect(() => {
-    fetchRooms();
+  const fetchRooms = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true);
 
-    // Set up real-time subscription
-    const subscription = supabase
+    const { data, error } = await supabase
+      .from("rooms")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching rooms:", error);
+    } else if (data) {
+      const mappedRooms = (data as DBRoom[]).map(mapRoom);
+      setRooms(mappedRooms);
+    }
+
+    if (showSpinner) setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    // 1. Initial Load
+    fetchRooms(true);
+
+    // 2. Real-time Subscription
+    const channel = supabase
       .channel('public-rooms-changes')
       .on(
         'postgres_changes',
@@ -58,57 +89,18 @@ export default function RoomsPage() {
         },
         (payload) => {
           console.log('Room change detected:', payload);
-          fetchRooms();
+          // Refresh data silently (no spinner)
+          fetchRooms(false);
         }
       )
       .subscribe();
 
+    // 3. Cleanup
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchRooms]);
 
-  async function fetchRooms() {
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("rooms")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      setLoading(false);
-      return;
-    }
-
-    const mappedRooms = (data as DBRoom[]).map(mapRoom);
-    setRooms(mappedRooms);
-    setLoading(false);
-  }
-
-  /* ============================
-     MAP DB → UI
-  ============================ */
-  function mapRoom(room: DBRoom): Room {
-    return {
-      id: room.id,
-      name: room.name,
-      price: room.base_price,
-      originalPrice: Math.round(room.base_price * 1.25),
-      maxGuests: room.max_guests,
-      size: "350 sq ft",
-      view: "Garden View",
-      images: room.images && room.images.length > 0 ? room.images : ['/placeholder-room.jpg'],
-      amenities: room.amenities || [],
-      description: room.description || "Beautiful room with modern amenities",
-      highlights: room.amenities?.slice(0, 3) || [],
-    };
-  }
-
-  /* ============================
-     FILTER LOGIC
-  ============================ */
   const priceRanges = [
     { id: "all", label: "All Rooms", min: 0, max: Infinity },
     { id: "budget", label: "Under ₹3000", min: 0, max: 3000 },
@@ -116,41 +108,43 @@ export default function RoomsPage() {
     { id: "luxury", label: "Above ₹4500", min: 4500, max: Infinity },
   ];
 
-  const filteredRooms = rooms.filter((room) => {
-    const range = priceRanges.find((r) => r.id === filterPrice)!;
-    return room.price >= range.min && room.price <= range.max;
-  });
+  const filteredRooms = useMemo(() => {
+    return rooms.filter((room) => {
+      const range = priceRanges.find((r) => r.id === filterPrice);
+      if (!range) return true; // Fallback if filter is invalid
+      return room.price >= range.min && room.price <= range.max;
+    });
+  }, [rooms, filterPrice]);
 
-  /* ============================
-     MODAL HANDLERS
-  ============================ */
   const openRoomDetails = (room: Room) => {
     setSelectedRoom(room);
     setActiveImageIndex(0);
+    // Optional: Lock body scroll
+    document.body.style.overflow = 'hidden';
   };
 
   const closeRoomDetails = () => {
     setSelectedRoom(null);
     setActiveImageIndex(0);
+    document.body.style.overflow = 'auto';
   };
 
-  const nextImage = () => {
+  const nextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!selectedRoom) return;
     setActiveImageIndex((prev) =>
       prev === selectedRoom.images.length - 1 ? 0 : prev + 1
     );
   };
 
-  const prevImage = () => {
+  const prevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!selectedRoom) return;
     setActiveImageIndex((prev) =>
       prev === 0 ? selectedRoom.images.length - 1 : prev - 1
     );
   };
 
-  /* ============================
-     UI
-  ============================ */
   return (
     <div className="rooms-page">
       {/* Hero */}
