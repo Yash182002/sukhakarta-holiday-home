@@ -19,11 +19,11 @@ type Place = {
 };
 
 const CATEGORIES = [
-  { id: 'beach', name: 'Beach', icon: '🏖️' },
-  { id: 'historical', name: 'Historical', icon: '🏰' },
-  { id: 'spiritual', name: 'Spiritual', icon: '🛕' },
-  { id: 'adventure', name: 'Adventure', icon: '🎯' },
-  { id: 'nature', name: 'Nature', icon: '🌳' }
+  { id: 'beach', name: 'Beach' },
+  { id: 'historical', name: 'Historical' },
+  { id: 'spiritual', name: 'Spiritual' },
+  { id: 'adventure', name: 'Adventure' },
+  { id: 'nature', name: 'Nature' }
 ] as const;
 
 export default function PlacesManagement() {
@@ -47,7 +47,6 @@ export default function PlacesManagement() {
   useEffect(() => {
     loadPlaces();
 
-    // Set up real-time subscription
     const subscription = supabase
       .channel('places-changes')
       .on(
@@ -129,7 +128,7 @@ export default function PlacesManagement() {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
 
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('place-images')
           .upload(fileName, file, {
             cacheControl: '3600',
@@ -255,11 +254,6 @@ export default function PlacesManagement() {
     loadPlaces();
   }
 
-  const getCategoryIcon = (category: string) => {
-    const cat = CATEGORIES.find(c => c.id === category);
-    return cat ? cat.icon : '📍';
-  };
-
   return (
     <div className="places-management">
       <div className="page-header">
@@ -268,8 +262,7 @@ export default function PlacesManagement() {
           <p>Manage tourist attractions and places to visit</p>
         </div>
         <button onClick={openAddModal} className="add-btn">
-          <span>➕</span>
-          <span>Add New Place</span>
+          Add New Place
         </button>
       </div>
 
@@ -279,7 +272,6 @@ export default function PlacesManagement() {
           const count = places.filter(p => p.category === cat.id).length;
           return (
             <div key={cat.id} className="stat-card">
-              <div className="stat-icon">{cat.icon}</div>
               <div className="stat-content">
                 <p className="stat-label">{cat.name}</p>
                 <h3 className="stat-value">{count}</h3>
@@ -300,7 +292,6 @@ export default function PlacesManagement() {
             <div key={place.id} className="place-card">
               <div className="place-header">
                 <div className="place-title">
-                  <span className="category-icon">{getCategoryIcon(place.category)}</span>
                   <h3>{place.name}</h3>
                 </div>
                 <div className="place-actions">
@@ -309,14 +300,14 @@ export default function PlacesManagement() {
                     className="edit-btn"
                     title="Edit"
                   >
-                    ✏️
+                    Edit
                   </button>
                   <button
                     onClick={() => handleDelete(place)}
                     className="delete-btn"
                     title="Delete"
                   >
-                    🗑️
+                    Delete
                   </button>
                 </div>
               </div>
@@ -335,7 +326,7 @@ export default function PlacesManagement() {
                   />
                   {place.images.length > 1 && (
                     <div className="image-count">
-                      📷 {place.images.length} photos
+                      {place.images.length} photos
                     </div>
                   )}
                 </div>
@@ -344,16 +335,16 @@ export default function PlacesManagement() {
               <div className="place-details">
                 <div className="detail-row">
                   <span className="detail-badge category">{place.category}</span>
-                  <span className="detail-badge rating">⭐ {place.rating}</span>
+                  <span className="detail-badge rating">Rating: {place.rating}</span>
                 </div>
 
                 <div className="detail-item">
-                  <span className="label">📍 Distance:</span>
+                  <span className="label">Distance:</span>
                   <span className="value">{place.distance}</span>
                 </div>
 
                 <div className="detail-item">
-                  <span className="label">⏱️ Travel Time:</span>
+                  <span className="label">Travel Time:</span>
                   <span className="value">{place.time}</span>
                 </div>
 
@@ -376,7 +367,6 @@ export default function PlacesManagement() {
 
           {places.length === 0 && (
             <div className="empty-state">
-              <span className="empty-icon">📍</span>
               <h3>No places yet</h3>
               <p>Add your first place to get started</p>
             </div>
@@ -422,7 +412,7 @@ export default function PlacesManagement() {
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat.id} value={cat.id}>
-                        {cat.icon} {cat.name}
+                        {cat.name}
                       </option>
                     ))}
                   </select>
@@ -520,7 +510,7 @@ export default function PlacesManagement() {
                     style={{ display: 'none' }}
                   />
                   <label htmlFor="image-upload" className="upload-btn">
-                    {uploading ? '⏳ Uploading...' : '📤 Upload Images'}
+                    {uploading ? 'Uploading...' : 'Upload Images'}
                   </label>
                   
                   {formData.images.length > 0 && (
@@ -557,7 +547,9 @@ export default function PlacesManagement() {
           </div>
         </div>
       )}
-
+    </div>
+  );
+}
       <style jsx>{`
         .places-management {
           max-width: 1400px;
