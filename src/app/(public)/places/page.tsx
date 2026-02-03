@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+// --- Types ---
 type Place = {
   id: string;
   name: string;
@@ -10,12 +11,14 @@ type Place = {
   distance: string;
   time: string;
   description: string;
-  images: string[];
+  images: string[] | null;
   rating: number;
-  highlights: string[];
+  highlights: string[] | null;
   location_url?: string;
+  created_at?: string;
 };
 
+// --- Constants ---
 const CATEGORIES = [
   { id: "all", name: "All Places" },
   { id: "beach", name: "Beaches" },
@@ -24,6 +27,16 @@ const CATEGORIES = [
   { id: "adventure", name: "Adventure" },
   { id: "nature", name: "Nature" },
 ];
+
+// --- Helpers ---
+function isValidHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 export default function PlacesToVisit() {
   const [activeFilter, setActiveFilter] = useState("all");
@@ -35,7 +48,7 @@ export default function PlacesToVisit() {
   useEffect(() => {
     loadPlaces();
 
-    const subscription = supabase
+    const channel = supabase
       .channel("public-places-changes")
       .on(
         "postgres_changes",
@@ -45,18 +58,9 @@ export default function PlacesToVisit() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeChannel(channel);
     };
   }, []);
-
-        function isValidHttpUrl(url: string): boolean {
-        try {
-          const parsed = new URL(url);
-          return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-        } catch {
-          return false;
-        }
-      }
 
   async function loadPlaces() {
     setLoading(true);
@@ -81,24 +85,26 @@ export default function PlacesToVisit() {
   const openPlaceDetails = (place: Place) => {
     setSelectedPlace(place);
     setActiveImageIndex(0);
+    document.body.style.overflow = "hidden";
   };
 
   const closePlaceDetails = () => {
     setSelectedPlace(null);
     setActiveImageIndex(0);
+    document.body.style.overflow = "auto";
   };
 
   const nextImage = () => {
     if (!selectedPlace?.images?.length) return;
     setActiveImageIndex((prev) =>
-      prev === selectedPlace.images.length - 1 ? 0 : prev + 1
+      prev === (selectedPlace.images?.length || 1) - 1 ? 0 : prev + 1
     );
   };
 
   const prevImage = () => {
     if (!selectedPlace?.images?.length) return;
     setActiveImageIndex((prev) =>
-      prev === 0 ? selectedPlace.images.length - 1 : prev - 1
+      prev === 0 ? (selectedPlace.images?.length || 1) - 1 : prev - 1
     );
   };
 
@@ -140,52 +146,57 @@ export default function PlacesToVisit() {
           <>
             {/* Places Grid */}
             <div className="places-grid">
-              {filteredPlaces.map((place) => (
-                <div
-                  key={place.id}
-                  className="place-card"
-                  onClick={() => openPlaceDetails(place)}
-                >
-                  {place.images?.length > 0 && (
-                    <div className="place-image-container">
-                      <img
-                        src={place.images[0]}
-                        alt={place.name}
-                        className="place-image"
-                      />
-                      {place.images.length > 1 && (
-                        <div className="image-badge">
-                          {place.images.length} photos
-                        </div>
-                      )}
-                    </div>
-                  )}
+              {filteredPlaces.map((place) => {
+                const images = place.images || [];
+                const highlights = place.highlights || [];
 
-                  <div className="place-content">
-                    <h3>{place.name}</h3>
+                return (
+                  <div
+                    key={place.id}
+                    className="place-card"
+                    onClick={() => openPlaceDetails(place)}
+                  >
+                    {images.length > 0 && (
+                      <div className="place-image-container">
+                        <img
+                          src={images[0]}
+                          alt={place.name}
+                          className="place-image"
+                        />
+                        {images.length > 1 && (
+                          <div className="image-badge">
+                            {images.length} photos
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                    <div className="place-meta">
-                      <span>{place.distance}</span>
-                      <span>{place.time}</span>
-                    </div>
+                    <div className="place-content">
+                      <h3>{place.name}</h3>
 
-                    <p className="description">{place.description}</p>
+                      <div className="place-meta">
+                        <span>{place.distance}</span>
+                        <span>{place.time}</span>
+                      </div>
 
-                    <div className="highlights">
-                      {place.highlights.slice(0, 2).map((h, i) => (
-                        <span key={i} className="highlight-tag">
-                          {h}
-                        </span>
-                      ))}
-                    </div>
+                      <p className="description">{place.description}</p>
 
-                    <div className="card-footer">
-                      <div className="rating">{place.rating}</div>
-                      <span className="view-more">View Details</span>
+                      <div className="highlights">
+                        {highlights.slice(0, 2).map((h, i) => (
+                          <span key={i} className="highlight-tag">
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="card-footer">
+                        <div className="rating">Rating: {place.rating}</div>
+                        <span className="view-more">View Details</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {filteredPlaces.length === 0 && (
@@ -206,7 +217,7 @@ export default function PlacesToVisit() {
               ×
             </button>
 
-            {selectedPlace.images?.length > 0 && (
+            {selectedPlace.images && selectedPlace.images.length > 0 && (
               <div className="gallery">
                 <div className="gallery-main">
                   <img
@@ -218,14 +229,13 @@ export default function PlacesToVisit() {
                   {selectedPlace.images.length > 1 && (
                     <>
                       <button onClick={prevImage} className="gallery-nav prev">
-                        ‹
+                        &lt;
                       </button>
                       <button onClick={nextImage} className="gallery-nav next">
-                        ›
+                        &gt;
                       </button>
                       <div className="gallery-counter">
-                        {activeImageIndex + 1} /{" "}
-                        {selectedPlace.images.length}
+                        {activeImageIndex + 1} / {selectedPlace.images.length}
                       </div>
                     </>
                   )}
@@ -241,7 +251,10 @@ export default function PlacesToVisit() {
                         }`}
                         onClick={() => setActiveImageIndex(i)}
                       >
-                        <img src={img} alt={`${selectedPlace.name} ${i + 1}`} />
+                        <img
+                          src={img}
+                          alt={`${selectedPlace.name} thumbnail ${i + 1}`}
+                        />
                       </div>
                     ))}
                   </div>
@@ -253,19 +266,17 @@ export default function PlacesToVisit() {
               <h2>{selectedPlace.name}</h2>
 
               <div className="modal-meta">
-                <div>{selectedPlace.distance}</div>
-                <div>{selectedPlace.time}</div>
-                <div>{selectedPlace.rating}</div>
+                <div>Distance: {selectedPlace.distance}</div>
+                <div>Time: {selectedPlace.time}</div>
+                <div>Rating: {selectedPlace.rating}</div>
               </div>
 
-              <p className="modal-description">
-                {selectedPlace.description}
-              </p>
+              <p className="modal-description">{selectedPlace.description}</p>
 
               <div className="modal-highlights">
                 <h4>Highlights</h4>
                 <div className="highlights-grid">
-                  {selectedPlace.highlights.map((h, i) => (
+                  {(selectedPlace.highlights || []).map((h, i) => (
                     <span key={i} className="highlight-pill">
                       {h}
                     </span>
@@ -274,16 +285,17 @@ export default function PlacesToVisit() {
               </div>
 
               <div className="modal-actions">
-                {selectedPlace.location_url && isValidHttpUrl(selectedPlace.location_url) && (
-                  <a
-                    href={selectedPlace.location_url}
-                    target="_blank"
-                    rel="noopener noreferrer" {/* ✅ ADDED */}
-                    className="action-btn primary"
-                  >
-                     Get Directions
-                  </a>
-                )}
+                {selectedPlace.location_url &&
+                  isValidHttpUrl(selectedPlace.location_url) && (
+                    <a
+                      href={selectedPlace.location_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="action-btn primary"
+                    >
+                      Get Directions
+                    </a>
+                  )}
                 <button
                   onClick={closePlaceDetails}
                   className="action-btn secondary"
