@@ -49,6 +49,15 @@ export default function PlacesToVisit() {
     };
   }, []);
 
+        function isValidHttpUrl(url: string): boolean {
+        try {
+          const parsed = new URL(url);
+          return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        } catch {
+          return false;
+        }
+      }
+
   async function loadPlaces() {
     setLoading(true);
     const { data, error } = await supabase
@@ -265,14 +274,14 @@ export default function PlacesToVisit() {
               </div>
 
               <div className="modal-actions">
-                {selectedPlace.location_url && (
+                {selectedPlace.location_url && isValidHttpUrl(selectedPlace.location_url) && (
                   <a
                     href={selectedPlace.location_url}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="noopener noreferrer" {/* ✅ ADDED */}
                     className="action-btn primary"
                   >
-                    Get Directions
+                     Get Directions
                   </a>
                 )}
                 <button
