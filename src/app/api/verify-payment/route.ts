@@ -10,12 +10,33 @@ export async function POST(req: Request) {
 
   const body = razorpay_order_id + "|" + razorpay_payment_id;
 
+  // Check if secret exists
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) {
+    return NextResponse.json(
+      { success: false, error: "Server configuration error" },
+      { status: 500 }
+    );
+  }
+
   const expectedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+    .createHmac("sha256", secret)
     .update(body)
     .digest("hex");
 
-  const isValid = expectedSignature === razorpay_signature;
+  // ✅ USE CONSTANT-TIME COMPARISON
+  const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+  const receivedBuffer = Buffer.from(razorpay_signature, 'hex');
+  
+  // Ensure both buffers are same length before comparison
+  if (expectedBuffer.length !== receivedBuffer.length) {
+    return NextResponse.json(
+      { success: false },
+      { status: 400 }
+    );
+  }
+
+  const isValid = crypto.timingSafeEqual(expectedBuffer, receivedBuffer);
 
   if (!isValid) {
     return NextResponse.json(
@@ -26,4 +47,3 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ success: true });
 }
-
