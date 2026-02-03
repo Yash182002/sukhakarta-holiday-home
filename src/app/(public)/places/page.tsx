@@ -45,23 +45,32 @@ export default function PlacesToVisit() {
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // 1. Wrap loadPlaces in useCallback to ensure function stability
-  const loadPlaces = useCallback(async (showSpinner = true) => {
-    if (showSpinner) setLoading(true);
+  const debouncedLoadPlaces = useDebounce(loadPlaces, 300);
 
-    const { data, error } = await supabase
-      .from("places")
-      .select("*")
-      .order("created_at", { ascending: false });
+  useEffect(() => {
+    const abortController = new AbortController();
 
-    if (!error && data) {
-      setPlaces(data);
-    } else {
-      console.error("Error loading places:", error);
-    }
+    loadPlaces(abortController.signal);
 
-    if (showSpinner) setLoading(false);
-  }, []);
+    const channel = supabase
+      .channel("places-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "places" },
+        () => {
+          // 🔁 Realtime reloads use SAME signal lifecycle
+          if (!abortController.signal.aborted) {
+            debouncedLoadPlaces(abortController.signal);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      abortController.abort(); // ✅ cancels in-flight fetch
+      supabase.removeChannel(channel);
+    };
+  }, [debouncedLoadPlaces]);
 
   // 2. Single useEffect for initial load + realtime subscription
   useEffect(() => {
@@ -84,6 +93,36 @@ export default function PlacesToVisit() {
       supabase.removeChannel(channel);
     };
   }, [loadPlaces]);
+
+  
+  // --------------------------------
+  // Loader WITH abort support
+  // --------------------------------
+  async function loadPlaces(signal?: AbortSignal) {
+    try {
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from("places")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .abortSignal(signal); // ✅ IMPORTANT
+
+      if (error) throw error;
+
+      if (!signal?.aborted && data) {
+        setPlaces(data);
+      }
+    } catch (error) {
+      if (!signal?.aborted) {
+        console.error("Error loading places:", error);
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }
 
   const filteredPlaces =
     activeFilter === "all"
