@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
-// --- Types ---
 type ContentSection = {
   id: string;
   section: string;
@@ -27,49 +26,33 @@ export default function HomePage() {
   const [ctaContent, setCtaContent] = useState<ContentSection | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Define loadContent with useCallback so it's stable
-  const loadContent = useCallback(async (showSpinner = true) => {
-    if (showSpinner) setLoading(true);
+  useEffect(() => {
+    loadContent();
 
-    const { data, error } = await supabase
+    // Real-time subscription
+    const subscription = supabase
+      .channel('homepage-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_content' }, loadContent)
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  async function loadContent() {
+    const { data } = await supabase
       .from("homepage_content")
       .select("*");
 
     if (data) {
-      setHeroContent(data.find((s) => s.section === "hero") || null);
-      setFeaturesContent(data.find((s) => s.section === "features") || null);
-      setCtaContent(data.find((s) => s.section === "cta") || null);
+      setHeroContent(data.find(s => s.section === 'hero') || null);
+      setFeaturesContent(data.find(s => s.section === 'features') || null);
+      setCtaContent(data.find(s => s.section === 'cta') || null);
     }
 
-    if (error) {
-      console.error("Error loading content:", error);
-    }
-
-    if (showSpinner) setLoading(false);
-  }, []);
-
-  // 2. Single useEffect for Initial Load + Realtime Subscription
-  useEffect(() => {
-    // Initial load
-    loadContent(true);
-
-    // Subscribe to changes in 'homepage_content' table
-    const channel = supabase
-      .channel("homepage-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "homepage_content" },
-        () => {
-          // Reload silently (no spinner) when DB updates
-          loadContent(false);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadContent]);
+    setLoading(false);
+  }
 
   if (loading) {
     return (
@@ -85,7 +68,6 @@ export default function HomePage() {
             justify-content: center;
             gap: 1rem;
             background: #0f172a;
-            color: white;
           }
           .spinner {
             width: 50px;
@@ -98,6 +80,9 @@ export default function HomePage() {
           @keyframes spin {
             to { transform: rotate(360deg); }
           }
+          p {
+            color: #94a3b8;
+          }
         `}</style>
       </div>
     );
@@ -109,30 +94,29 @@ export default function HomePage() {
       <div className="bg-gradient">
         <div className="gradient-orb orb-1"></div>
         <div className="gradient-orb orb-2"></div>
+        <div className="gradient-orb orb-3"></div>
       </div>
 
       {/* Hero Section */}
       {heroContent && (
         <section className="hero">
-          <div className="hero-grid">
-            <div className="hero-text-content">
-              <h1 className="hero-title">{heroContent.title}</h1>
-              {heroContent.subtitle && (
-                <p className="hero-subtitle">{heroContent.subtitle}</p>
-              )}
-              {heroContent.description && (
-                <p className="hero-description">{heroContent.description}</p>
-              )}
-              {heroContent.button_text && heroContent.button_link && (
-                <Link href={heroContent.button_link} className="cta-button primary">
-                  {heroContent.button_text}
-                </Link>
-              )}
+          {heroContent.image_url && (
+            <div className="hero-image">
+              <img src={heroContent.image_url} alt="Hero" />
             </div>
-            {heroContent.image_url && (
-              <div className="hero-image-container">
-                <img src={heroContent.image_url} alt="Hero" className="hero-img" />
-              </div>
+          )}
+          <div className="hero-content">
+            <h1 className="hero-title">{heroContent.title}</h1>
+            {heroContent.subtitle && (
+              <p className="hero-subtitle">{heroContent.subtitle}</p>
+            )}
+            {heroContent.description && (
+              <p className="hero-description">{heroContent.description}</p>
+            )}
+            {heroContent.button_text && heroContent.button_link && (
+              <Link href={heroContent.button_link} className="cta-button">
+                {heroContent.button_text}
+              </Link>
             )}
           </div>
         </section>
@@ -142,12 +126,14 @@ export default function HomePage() {
       {featuresContent && featuresContent.features && (
         <section className="features">
           <div className="container">
-            <div className="section-header">
-              {featuresContent.title && <h2>{featuresContent.title}</h2>}
-              {featuresContent.subtitle && (
-                <p className="subtitle">{featuresContent.subtitle}</p>
-              )}
-            </div>
+            {featuresContent.title && (
+              <div className="section-header">
+                <h2>{featuresContent.title}</h2>
+                {featuresContent.subtitle && (
+                  <p className="subtitle">{featuresContent.subtitle}</p>
+                )}
+              </div>
+            )}
 
             <div className="features-grid">
               {featuresContent.features.map((feature, index) => (
@@ -166,16 +152,14 @@ export default function HomePage() {
       {ctaContent && (
         <section className="cta-section">
           <div className="container">
-            <div className="cta-box">
-              <div className="cta-content">
-                {ctaContent.title && <h2>{ctaContent.title}</h2>}
-                {ctaContent.description && <p>{ctaContent.description}</p>}
-                {ctaContent.button_text && ctaContent.button_link && (
-                  <Link href={ctaContent.button_link} className="cta-button secondary">
-                    {ctaContent.button_text}
-                  </Link>
-                )}
-              </div>
+            <div className="cta-content">
+              {ctaContent.title && <h2>{ctaContent.title}</h2>}
+              {ctaContent.description && <p>{ctaContent.description}</p>}
+              {ctaContent.button_text && ctaContent.button_link && (
+                <Link href={ctaContent.button_link} className="cta-button">
+                  {ctaContent.button_text}
+                </Link>
+              )}
             </div>
           </div>
         </section>
