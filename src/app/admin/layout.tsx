@@ -97,7 +97,7 @@ export default function AdminLayout({
         <aside className="sidebar">
           <div className="sidebar-header">
             <div className="logo">
-              <span className="logo-icon">🏖️</span>
+              <span className="logo-icon"></span>
               <div className="logo-text">
                 <h2>Sukhakarta</h2>
                 <p>Admin Panel</p>
@@ -110,7 +110,7 @@ export default function AdminLayout({
               href="/admin"
               className={`nav-item ${isActiveRoute("/admin") ? "active" : ""}`}
             >
-              <span className="nav-icon">📊</span>
+              <span className="nav-icon"></span>
               <span>Dashboard</span>
             </a>
 
@@ -120,7 +120,7 @@ export default function AdminLayout({
                 isActiveRoute("/admin/rooms") ? "active" : ""
               }`}
             >
-              <span className="nav-icon">🏨</span>
+              <span className="nav-icon"></span>
               <span>Rooms</span>
             </a>
 
@@ -130,7 +130,7 @@ export default function AdminLayout({
                 isActiveRoute("/admin/places") ? "active" : ""
               }`}
             >
-              <span className="nav-icon">📍</span>
+              <span className="nav-icon"></span>
               <span>Places</span>
             </a>
 
@@ -140,7 +140,7 @@ export default function AdminLayout({
                 isActiveRoute("/admin/bookings") ? "active" : ""
               }`}
             >
-              <span className="nav-icon">📅</span>
+              <span className="nav-icon"></span>
               <span>Bookings</span>
             </a>
 
@@ -150,7 +150,7 @@ export default function AdminLayout({
                 isActiveRoute("/admin/content") ? "active" : ""
               }`}
             >
-              <span className="nav-icon">📝</span>
+              <span className="nav-icon"></span>
               <span>Content</span>
             </a>
 
@@ -160,19 +160,19 @@ export default function AdminLayout({
                 isActiveRoute("/admin/block-dates") ? "active" : ""
               }`}
             >
-              <span className="nav-icon">🚫</span>
+              <span className="nav-icon"></span>
               <span>Block Dates</span>
             </a>
           </nav>
 
           <div className="sidebar-footer">
             <button onClick={handleLogout} className="logout-btn">
-              <span className="nav-icon">🚪</span>
+              <span className="nav-icon"></span>
               <span>Logout</span>
             </button>
 
             <a href="/" target="_blank" className="view-site-btn">
-              <span className="nav-icon">🌐</span>
+              <span className="nav-icon"></span>
               <span>View Website</span>
             </a>
           </div>
