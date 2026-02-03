@@ -76,6 +76,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar/Nav would go here */}
       <main>{children}</main>
     </div>
+    );
+}
 
       <style jsx global>{`
         * {
