@@ -48,19 +48,34 @@ export default function PlacesToVisit() {
   useEffect(() => {
     loadPlaces();
 
-    const channel = supabase
-      .channel("public-places-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "places" },
-        () => loadPlaces()
-      )
-      .subscribe();
+    import { useDebounce } from "@/hooks/useDebounce";
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+const debouncedLoadPlaces = useDebounce(loadPlaces, 300);
+
+useEffect(() => {
+  loadPlaces();
+
+  const channel = supabase
+    .channel("places-changes")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "places" },
+      (payload) => {
+        if (
+          payload.eventType === "INSERT" ||
+          payload.eventType === "UPDATE" ||
+          (payload.eventType === "DELETE" && payload.old)
+        ) {
+          debouncedLoadPlaces();
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [debouncedLoadPlaces]);
 
   async function loadPlaces() {
     setLoading(true);
