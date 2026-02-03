@@ -132,7 +132,7 @@ export default function RoomsManagement() {
       }));
     } catch (error) {
       console.error('Error uploading images:', error);
-      alert('Failed to upload images');
+      ;
     } finally {
       setUploading(false);
     }
@@ -167,7 +167,7 @@ export default function RoomsManagement() {
 
   async function handleSave() {
     if (!formData.name || !formData.base_price || !formData.max_guests) {
-      alert("Please fill in all required fields");
+      ;
       return;
     }
 

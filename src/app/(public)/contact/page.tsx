@@ -100,7 +100,7 @@ export default function ContactPage() {
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.email || !formData.message) {
-      alert("Please fill all required fields");
+      ;
       return;
     }
 
