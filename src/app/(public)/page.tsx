@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type ContentSection = {
   id: string;
@@ -25,20 +26,32 @@ export default function HomePage() {
   const [featuresContent, setFeaturesContent] = useState<ContentSection | null>(null);
   const [ctaContent, setCtaContent] = useState<ContentSection | null>(null);
   const [loading, setLoading] = useState(true);
+  const debouncedReload = useDebounce(loadPlaces, 300);
 
   useEffect(() => {
     loadContent();
 
-    // Real-time subscription
-    const subscription = supabase
-      .channel('homepage-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'homepage_content' }, loadContent)
-      .subscribe();
+    
+useEffect(() => {
+  loadPlaces();
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  const channel = supabase
+    .channel("homepage-places")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "places" },
+      (payload) => {
+        if (payload.eventType !== "DELETE" || payload.old) {
+          debouncedReload();
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [debouncedReload]);
 
   async function loadContent() {
     const { data } = await supabase
