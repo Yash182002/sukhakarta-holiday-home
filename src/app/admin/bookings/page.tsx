@@ -134,7 +134,7 @@ export default function AdminBookings() {
         {/* Stats Cards */}
         <div className="stats-grid">
           <div className="stat-card total">
-            <div className="stat-icon">📊</div>
+            <div className="stat-icon"></div>
             <div className="stat-content">
               <p className="stat-label">Total Bookings</p>
               <h3 className="stat-value">{stats.total}</h3>
@@ -142,7 +142,7 @@ export default function AdminBookings() {
           </div>
 
           <div className="stat-card pending">
-            <div className="stat-icon">⏳</div>
+            <div className="stat-icon"></div>
             <div className="stat-content">
               <p className="stat-label">Pending</p>
               <h3 className="stat-value">{stats.pending}</h3>
@@ -150,7 +150,7 @@ export default function AdminBookings() {
           </div>
 
           <div className="stat-card confirmed">
-            <div className="stat-icon">✅</div>
+            <div className="stat-icon"></div>
             <div className="stat-content">
               <p className="stat-label">Confirmed</p>
               <h3 className="stat-value">{stats.confirmed}</h3>
@@ -158,7 +158,7 @@ export default function AdminBookings() {
           </div>
 
           <div className="stat-card cancelled">
-            <div className="stat-icon">❌</div>
+            <div className="stat-icon"></div>
             <div className="stat-content">
               <p className="stat-label">Cancelled</p>
               <h3 className="stat-value">{stats.cancelled}</h3>
@@ -210,7 +210,7 @@ export default function AdminBookings() {
           <div className="bookings-table-container">
             {filteredBookings.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon">📅</div>
+                <div className="empty-icon"></div>
                 <h3>No bookings found</h3>
                 <p>
                   {filterStatus === "all"
@@ -400,7 +400,7 @@ export default function AdminBookings() {
                         updateBookingStatus(selectedBooking.id, "confirmed")
                       }
                     >
-                      ✅ Confirm Booking
+                       Confirm Booking
                     </button>
                   )}
 
@@ -411,7 +411,7 @@ export default function AdminBookings() {
                         updateBookingStatus(selectedBooking.id, "cancelled")
                       }
                     >
-                      ❌ Cancel Booking
+                       Cancel Booking
                     </button>
                   )}
 
@@ -422,7 +422,7 @@ export default function AdminBookings() {
                         updateBookingStatus(selectedBooking.id, "confirmed")
                       }
                     >
-                      ✅ Reactivate Booking
+                       Reactivate Booking
                     </button>
                   )}
 
@@ -437,14 +437,14 @@ export default function AdminBookings() {
                     href={`tel:${selectedBooking.phone}`}
                     className="modal-action-btn contact"
                   >
-                    📞 Call Customer
+                     Call Customer
                   </a>
 
                   <a
                     href={`mailto:${selectedBooking.email}`}
                     className="modal-action-btn contact"
                   >
-                    ✉️ Email Customer
+                     Email Customer
                   </a>
 
                   <a
@@ -456,7 +456,7 @@ export default function AdminBookings() {
                     rel="noopener noreferrer"
                     className="modal-action-btn contact"
                   >
-                    💬 WhatsApp
+                     WhatsApp
                   </a>
                 </div>
               </div>
