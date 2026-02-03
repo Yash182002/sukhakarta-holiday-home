@@ -12,31 +12,35 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+ async function handleLogin(e: React.FormEvent) {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  try {
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
+    if (authError) {
+      // ✅ GENERIC ERROR MESSAGE (don't leak user existence)
+      setError("Invalid email or password");
+      setLoading(false);
+      return;
+    }
 
-      if (data.session) {
-        router.push("/admin");
-      }
-    } catch (err) {
-      setError("An unexpected error occurred");
+    if (data.session) {
+      router.push("/admin");
+    } else {
+      setError("Authentication failed. Please try again.");
       setLoading(false);
     }
+  } catch (err) {
+    setError("An error occurred. Please try again.");
+    setLoading(false);
   }
+}
 
   return (
     <>
