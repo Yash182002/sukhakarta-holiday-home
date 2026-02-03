@@ -35,27 +35,29 @@ export default function AdminDashboard() {
   }
 
   async function loadStats() {
+    // 1. Get Total Count
     const { count: totalCount } = await supabase
-  .from("bookings")
-  .select("*", { count: 'exact', head: true });
+      .from("bookings")
+      .select("*", { count: "exact", head: true });
 
-const { count: pendingCount } = await supabase
-  .from("bookings")
-  .select("*", { count: 'exact', head: true })
-  .eq("status", "pending");
+    // 2. Get Pending Count
+    const { count: pendingCount } = await supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending");
 
-const { count: confirmedCount } = await supabase
-  .from("bookings")
-  .select("*", { count: 'exact', head: true })
-  .eq("status", "confirmed");
+    // 3. Get Confirmed Count
+    const { count: confirmedCount } = await supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "confirmed");
 
-    if (bookings) {
-      setStats({
-        totalBookings: bookings.length,
-        pendingBookings: bookings.filter(b => b.status === "pending").length,
-        confirmedBookings: bookings.filter(b => b.status === "confirmed").length,
-      });
-    }
+    // ✅ FIX: Use the counts directly instead of the undefined 'bookings' variable
+    setStats({
+      totalBookings: totalCount || 0,
+      pendingBookings: pendingCount || 0,
+      confirmedBookings: confirmedCount || 0,
+    });
 
     setLoading(false);
   }
