@@ -1,0 +1,25 @@
+# Robots.txt for Sukhakarta Holiday Home
+# Optimized for SEO
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://sukhakartaholidayhome.in/sitemap.xml
+
+# Google Bot
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Bing Bot
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+# Crawl Delay
+Crawl-delay: 1
