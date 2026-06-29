@@ -61,7 +61,7 @@ const schemaData = {
     "streetAddress": "House no 826, Aadarsh Nagar, Kurul",
     "addressLocality": "Alibag",
     "addressRegion": "Maharashtra",
-    "postalCode": "402201",
+    "postalCode": "402209",
     "addressCountry": "IN",
   },
   "geo": {

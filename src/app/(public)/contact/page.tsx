@@ -299,7 +299,7 @@ export default function ContactPage() {
               <h3>Location</h3>
               <p>Sukhakarta Holiday Home</p>
               <p>House no 826, Aadarsh Nagar, Kurul,</p>
-              <p>Alibag, Maharashtra 402201</p>
+              <p>Alibag, Maharashtra 402209</p>
               <p>India</p>
             </div>
             <div className="info-card">

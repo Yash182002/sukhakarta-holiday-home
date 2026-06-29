@@ -85,7 +85,7 @@ function customerEmailHtml(d: {
       <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#38bdf8;">Important Information</p>
       <p style="margin:4px 0;font-size:13px;color:#94a3b8;">🕛 Check-in: <strong style="color:#cbd5e1;">12:00 PM</strong></p>
       <p style="margin:4px 0;font-size:13px;color:#94a3b8;">🕚 Check-out: <strong style="color:#cbd5e1;">11:00 AM</strong></p>
-      <p style="margin:4px 0;font-size:13px;color:#94a3b8;">📍 <strong style="color:#cbd5e1;">House no 826, Aadarsh Nagar, Kurul, Alibag 402201</strong></p>
+      <p style="margin:4px 0;font-size:13px;color:#94a3b8;">📍 <strong style="color:#cbd5e1;">House no 826, Aadarsh Nagar, Kurul, Alibag 402209</strong></p>
       <p style="margin:4px 0;font-size:13px;color:#94a3b8;">📞 <strong style="color:#cbd5e1;">+91 80875 41496</strong></p>
     </td></tr>
   </table>
@@ -236,7 +236,7 @@ export async function POST(req: Request) {
 
   // Build WhatsApp URL (returned for optional admin use — not auto-sent)
   const waMsg = encodeURIComponent(
-    `✅ Booking Confirmed – Sukhakarta Holiday Home\n\nHi ${customer_name}!\n🏠 Room: ${room_name}\n📅 Check-in: ${check_in}\n📅 Check-out: ${check_out}\n👥 Guests: ${guestCount}\n💰 Total: ₹${amount.toLocaleString("en-IN")}\n\n📍 House no 826, Aadarsh Nagar, Kurul, Alibag 402201\n📞 +91 80875 41496`
+    `✅ Booking Confirmed – Sukhakarta Holiday Home\n\nHi ${customer_name}!\n🏠 Room: ${room_name}\n📅 Check-in: ${check_in}\n📅 Check-out: ${check_out}\n👥 Guests: ${guestCount}\n💰 Total: ₹${amount.toLocaleString("en-IN")}\n\n📍 House no 826, Aadarsh Nagar, Kurul, Alibag 402209\n📞 +91 80875 41496`
   );
   const whatsappUrl = phone ? `https://wa.me/91${phone}?text=${waMsg}` : null;
 
