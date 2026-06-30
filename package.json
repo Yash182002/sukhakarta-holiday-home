@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@plausible-analytics/tracker": "^0.4.5",
     "@supabase/supabase-js": "^2.90.1",
     "next": "^16.1.4",
     "razorpay": "^2.9.6",
