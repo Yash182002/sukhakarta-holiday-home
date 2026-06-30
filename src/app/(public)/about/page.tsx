@@ -1,11 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import AboutClient from './AboutClient';
+import { PAGE_METADATA } from '@/lib/metadata';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: "About Us | Sukhakarta Holiday Home Alibag",
-  description: "Learn about Sukhakarta Holiday Home — a luxury coastal retreat in Alibag, Maharashtra. Discover our story, values, and commitment to exceptional hospitality.",
-};
+export const metadata: Metadata = PAGE_METADATA.about;
 
 export const revalidate = 300;
 

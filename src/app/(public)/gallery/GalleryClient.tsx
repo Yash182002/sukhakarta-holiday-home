@@ -297,7 +297,7 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
                 <video src={lightbox.media_url} controls autoPlay className="gl-lb-media" />
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={lightbox.media_url} alt={lightbox.title || ""} className="gl-lb-media" />
+                <img src={lightbox.media_url} alt={lightbox.title || "Sukhakarta Holiday Home Alibag gallery photo"} className="gl-lb-media" />
               )}
             </div>
 
@@ -323,7 +323,7 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
                       onClick={() => { setLightbox(item); setLightboxIdx(realIdx); }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.thumbnail_url || item.media_url} alt="" />
+                      <img src={item.thumbnail_url || item.media_url} alt={item.title || "Gallery thumbnail"} />
                       {item.media_type === "video" && <div className="gl-lb-thumb-play">▶</div>}
                     </div>
                   );

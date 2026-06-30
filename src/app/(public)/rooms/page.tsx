@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import RoomsClient from './RoomsClient';
+import SchemaScript from '@/components/SchemaScript';
+import { getRoomsSchema } from '@/lib/schemas';
+import { PAGE_METADATA } from '@/lib/metadata';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: "Rooms at Sukhakarta Holiday Home | Alibag Beach Accommodation",
-  description: "Explore our premium A/C rooms with mountain views, beach access and modern amenities in Alibag. Book direct for best rates at Sukhakarta Holiday Home.",
-};
+export const metadata: Metadata = PAGE_METADATA.rooms;
 
 export const revalidate = 60;
 
@@ -24,5 +24,12 @@ export default async function RoomsPage() {
     console.error("Error fetching rooms for SSR:", error);
   }
 
-  return <RoomsClient initialRooms={rooms || []} />;
+  return (
+    <>
+      {rooms && rooms.length > 0 && (
+        <SchemaScript schema={getRoomsSchema(rooms)} />
+      )}
+      <RoomsClient initialRooms={rooms || []} />
+    </>
+  );
 }

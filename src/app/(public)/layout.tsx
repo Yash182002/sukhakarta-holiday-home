@@ -35,6 +35,9 @@ export const metadata: Metadata = {
     "Alibag beach stay",
     "Sukhakarta Holiday Home",
   ],
+  alternates: {
+    canonical: "https://sukhakartaholidayhome.in",
+  },
   openGraph: {
     title: "Sukhakarta Holiday Home | Alibag",
     description:
@@ -43,44 +46,22 @@ export const metadata: Metadata = {
     siteName: "Sukhakarta Holiday Home",
     locale: "en_IN",
     type: "website",
+    images: [
+      {
+        url: "https://sukhakartaholidayhome.in/logo.webp",
+        width: 1200,
+        height: 630,
+        alt: "Sukhakarta Holiday Home, Alibag",
+      },
+    ],
   },
-};
-
-const schemaData = {
-  "@context": "https://schema.org",
-  "@type": "LodgingBusiness",
-  "name": "Sukhakarta Holiday Home",
-  "url": "https://sukhakartaholidayhome.in",
-  "telephone": "+918087541496",
-  "email": "sukhakartaholidayhome@gmail.com",
-  "image": "https://sukhakartaholidayhome.in/logo.webp",
-  "description":
-    "Luxury beachfront holiday home in Alibag, Maharashtra. A/C rooms with mountain views, 9 minutes from beach, couple and family-friendly.",
-  "address": {
-    "@type": "PostalAddress",
-    "streetAddress": "House no 826, Aadarsh Nagar, Kurul",
-    "addressLocality": "Alibag",
-    "addressRegion": "Maharashtra",
-    "postalCode": "402209",
-    "addressCountry": "IN",
+  twitter: {
+    card: "summary_large_image",
+    title: "Sukhakarta Holiday Home | Alibag",
+    description:
+      "Luxury coastal retreat in Alibag with sea views and beach access.",
+    images: ["https://sukhakartaholidayhome.in/logo.webp"],
   },
-  "geo": {
-    "@type": "GeoCoordinates",
-    "latitude": "18.6414",
-    "longitude": "72.8722",
-  },
-  "priceRange": "1999 and up",
-  "checkinTime": "12:00",
-  "checkoutTime": "11:00",
-  "sameAs": [
-    "https://www.instagram.com/sukhakarta.holiday.home/",
-  ],
-  "amenityFeature": [
-    { "@type": "LocationFeatureSpecification", "name": "Beach Access", "value": true },
-    { "@type": "LocationFeatureSpecification", "name": "Air Conditioning", "value": true },
-    { "@type": "LocationFeatureSpecification", "name": "Free WiFi", "value": true },
-    { "@type": "LocationFeatureSpecification", "name": "Parking", "value": true },
-  ],
 };
 
 export default function RootLayout({
@@ -92,12 +73,6 @@ export default function RootLayout({
     <html lang="en" className={`${cormorant.variable} ${outfit.variable}`}>
       <head>
         <link rel="dns-prefetch" href="https://lzyigqadbokousphuxnx.supabase.co" />
-
-        {/* JSON-LD Schema Markup — helps Google show rich results */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-        />
 
         <style>{`
           *, *::before, *::after { box-sizing: border-box; }

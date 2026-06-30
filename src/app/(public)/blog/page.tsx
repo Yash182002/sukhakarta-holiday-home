@@ -27,6 +27,21 @@ export const metadata: Metadata = {
     siteName: "Sukhakarta Holiday Home",
     locale: "en_IN",
     type: "website",
+    images: [
+      {
+        url: "https://sukhakartaholidayhome.in/logo.webp",
+        width: 1200,
+        height: 630,
+        alt: "Sukhakarta Holiday Home, Alibag",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Travel Blog | Sukhakarta Holiday Home, Alibag",
+    description:
+      "Discover Alibag through our travel blog. Expert tips, hidden gems and local guides.",
+    images: ["https://sukhakartaholidayhome.in/logo.webp"],
   },
   alternates: {
     canonical: "https://sukhakartaholidayhome.in/blog",

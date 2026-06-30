@@ -31,7 +31,7 @@ export async function generateMetadata(
   const supabase = getSupabase();
   const { data: post } = await supabase
     .from("blog_posts")
-    .select("title, excerpt, slug, tags, published_at, cover_color, meta_description, meta_keywords")
+    .select("title, excerpt, slug, tags, published_at, cover_color, cover_image_url, meta_description, meta_keywords")
     .eq("slug", slug)
     .eq("published", true)
     .single();
@@ -40,6 +40,7 @@ export async function generateMetadata(
 
   const description = post.meta_description || post.excerpt || "";
   const keywords = (post.meta_keywords?.length ? post.meta_keywords : post.tags) ?? [];
+  const ogImage = post.cover_image_url || "https://sukhakartaholidayhome.in/logo.webp";
 
   return {
     title: `${post.title} | Sukhakarta Holiday Home Blog`,
@@ -53,6 +54,20 @@ export async function generateMetadata(
       locale: "en_IN",
       type: "article",
       publishedTime: post.published_at ?? undefined,
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description,
+      images: [ogImage],
     },
     alternates: {
       canonical: `https://sukhakartaholidayhome.in/blog/${post.slug}`,

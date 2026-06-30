@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
+import { PAGE_METADATA } from '@/lib/metadata';
 
-export const metadata: Metadata = {
-  title: "Book Your Stay — Alibag Holiday Home",
-  description:
-    "Book direct at Sukhakarta Holiday Home Alibag. Instant confirmation, best rates guaranteed. mountain view A/C rooms available for couples, families and groups.",
-};
+export const metadata: Metadata = PAGE_METADATA.book;
 
 export default function BookLayout({
   children,

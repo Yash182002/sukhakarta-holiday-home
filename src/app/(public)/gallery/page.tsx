@@ -1,11 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import GalleryClient from './GalleryClient';
+import { PAGE_METADATA } from '@/lib/metadata';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: "Gallery | Sukhakarta Holiday Home Alibag",
-  description: "Browse photos and videos of Sukhakarta Holiday Home — our rooms, beachfront, surroundings and amenities in Alibag, Maharashtra.",
-};
+export const metadata: Metadata = PAGE_METADATA.gallery;
 
 export const revalidate = 0;
 

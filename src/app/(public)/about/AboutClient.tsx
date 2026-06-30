@@ -122,7 +122,7 @@ export default function AboutClient({ initialHero, initialStory, initialValues }
               {heroContent.image_url && (
                 <div className="hero-right reveal" style={{ "--delay": "200ms" } as React.CSSProperties}>
                   <div className="img-frame">
-                    <img src={heroContent.image_url} alt="About us" loading="lazy" />
+                    <img src={heroContent.image_url} alt="Sukhakarta Holiday Home, Alibag — about our homestay" loading="lazy" />
                   </div>
                 </div>
               )}
@@ -139,7 +139,7 @@ export default function AboutClient({ initialHero, initialStory, initialValues }
               {storyContent.image_url && (
                 <div className="story-img-col reveal" style={{ "--delay": "0ms" } as React.CSSProperties}>
                   <div className="img-frame">
-                    <img src={storyContent.image_url} alt="Our story" loading="lazy" />
+                    <img src={storyContent.image_url} alt="The story of Sukhakarta Holiday Home, a family-run homestay in Alibag" loading="lazy" />
                   </div>
                 </div>
               )}

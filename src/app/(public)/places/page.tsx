@@ -1,11 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import PlacesClient from './PlacesClient';
+import { PAGE_METADATA } from '@/lib/metadata';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = {
-  title: "Places to Visit Near Alibag | Sukhakarta Holiday Home",
-  description: "Discover the best beaches, forts, temples and attractions near Sukhakarta Holiday Home in Alibag, Maharashtra. Plan your perfect coastal getaway.",
-};
+export const metadata: Metadata = PAGE_METADATA.places;
 
 export const revalidate = 600;
 

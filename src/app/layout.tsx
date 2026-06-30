@@ -1,8 +1,34 @@
-"use client";
-
 import "./globals.css";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono, Cormorant_Garamond, Outfit } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://sukhakartaholidayhome.in"),
+  title: {
+    default: "Sukhakarta Holiday Home | Alibag Beachfront Stay",
+    template: "%s | Sukhakarta Holiday Home Alibag",
+  },
+  description:
+    "Luxury beachfront holiday home in Alibag, Maharashtra. A/C rooms with sea views, 9 minutes from beach, family-friendly. Book direct for best rates.",
+  twitter: {
+    card: "summary_large_image",
+    title: "Sukhakarta Holiday Home | Alibag Beachfront Stay",
+    description:
+      "Luxury beachfront holiday home in Alibag, Maharashtra. A/C rooms with sea views, 9 minutes from beach, family-friendly.",
+    images: ["https://sukhakartaholidayhome.in/logo.webp"],
+  },
+  openGraph: {
+    images: [
+      {
+        url: "https://sukhakartaholidayhome.in/logo.webp",
+        width: 1200,
+        height: 630,
+        alt: "Sukhakarta Holiday Home, Alibag",
+      },
+    ],
+  },
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -369,7 +369,9 @@ function HeroSlideBackground({
         <div key={img + i} className={`hero-slide ${i === activeIndex ? "active" : ""}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={img} alt="" className="hero-slide-img"
+            src={img}
+            alt={`Sukhakarta Holiday Home Alibag — beachfront view ${i + 1}`}
+            className="hero-slide-img"
             fetchPriority={i === 0 ? "high" : "low"}
             loading={i === 0 ? "eager" : "lazy"}
             decoding="async" width={1920} height={1080}
