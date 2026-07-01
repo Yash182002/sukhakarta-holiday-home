@@ -181,7 +181,7 @@ export const faqSchema = {
       "name": "What is the price per night at Sukhakarta Holiday Home?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Rooms start from ₹1,799 per night for standard rooms. The family hall starts from ₹2,499 per night. Book directly at sukhakartaholidayhome.in for the best rates — no extra OTA fees."
+        "text": "Rooms start from ₹1,499 per night for standard rooms. The family hall starts from ₹2,499 per night. Book directly at sukhakartaholidayhome.in for the best rates — no extra OTA fees."
       }
     },
     {
