@@ -22,11 +22,11 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "Sukhakarta Holiday Home | Alibag Beachfront Stay",
+    default: "Sukhakarta Holiday Home | Best Homestay Near Alibag Beach",
     template: "%s | Sukhakarta Holiday Home Alibag",
   },
   description:
-    "Luxury beachfront holiday home in Alibag, Maharashtra. A/C rooms with sea views, 9 minutes from beach, family-friendly. Book direct for best rates.",
+    "Peaceful homestay in Alibag, Maharashtra. AC rooms with mountain views, just minutes from Nagaon & Varsoli Beach. Family-friendly. Book direct for best rates.",
   keywords: [
     "Alibag holiday home",
     "Alibag homestay",
