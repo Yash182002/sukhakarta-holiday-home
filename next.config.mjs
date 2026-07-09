@@ -43,10 +43,8 @@ const nextConfig = {
         ],
       },
       // Long-lived cache for immutable static assets
-      {
-        source: "/_next/static/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
-      },
+      // (Next.js already sets immutable Cache-Control for /_next/static —
+      // overriding it breaks dev behavior, so we only handle public assets)
       {
         source: "/:path*.(woff2|woff|ttf|otf|ico|png|jpg|jpeg|svg|webp|avif)",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
