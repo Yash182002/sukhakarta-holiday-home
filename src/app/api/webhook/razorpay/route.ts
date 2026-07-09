@@ -1,19 +1,24 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Module-level client is safe here — service role only, no user sessions
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("[webhook] Missing Supabase configuration");
+// Lazy client creation — never throw at module scope, or `next build`
+// fails while collecting page data when env vars aren't available.
+let _supabaseAdmin: SupabaseClient | null = null;
+function getSupabaseAdmin(): SupabaseClient {
+  if (_supabaseAdmin) return _supabaseAdmin;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("[webhook] Missing Supabase configuration");
+  }
+  _supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return _supabaseAdmin;
 }
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 // Body size guard — Razorpay webhooks are small; reject anything huge
 const MAX_BODY_BYTES = 64 * 1024; // 64 KB
@@ -112,7 +117,7 @@ async function handlePaymentCaptured(payment: any, req: Request) {
     return;
   }
 
-  const { data: bookings, error: updateError } = await supabaseAdmin
+  const { data: bookings, error: updateError } = await getSupabaseAdmin()
     .from("bookings")
     .update({
       status: "confirmed",
@@ -177,7 +182,7 @@ async function handlePaymentFailed(payment: any) {
       : [];
   if (bookingIds.length === 0) return;
 
-  const { error } = await supabaseAdmin
+  const { error } = await getSupabaseAdmin()
     .from("bookings")
     .update({ status: "cancelled", payment_status: "failed" })
     .in("id", bookingIds);
