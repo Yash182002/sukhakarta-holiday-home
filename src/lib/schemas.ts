@@ -153,6 +153,46 @@ export function getRoomsSchema(rooms: {
     ]
   }
 }
+
+
+export function getLocationPageSchema(location: {
+  slug: string
+  title: string
+  metaDesc: string
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": ["LodgingBusiness", "LocalBusiness"],
+        "@id": "https://sukhakartaholidayhome.in/#business",
+        "name": "Sukhakarta Holiday Home",
+        "url": `https://sukhakartaholidayhome.in/stay/${location.slug}`,
+        "description": location.metaDesc,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "House No. 826, Kurul",
+          "addressLocality": "Alibag",
+          "addressRegion": "Maharashtra",
+          "postalCode": "402209",
+          "addressCountry": "IN"
+        },
+        "telephone": "+918087541496",
+        "priceRange": "₹₹",
+        "checkinTime": "12:00",
+        "checkoutTime": "11:00"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://sukhakartaholidayhome.in" },
+          { "@type": "ListItem", "position": 2, "name": "Stay Options", "item": "https://sukhakartaholidayhome.in/stay" },
+          { "@type": "ListItem", "position": 3, "name": location.title, "item": `https://sukhakartaholidayhome.in/stay/${location.slug}` }
+        ]
+      }
+    ]
+  }
+}
 // ─────────────────────────────────────────────────────────────
 // 3. FAQ PAGE SCHEMA
 // ─────────────────────────────────────────────────────────────
@@ -181,7 +221,7 @@ export const faqSchema = {
       "name": "What is the price per night at Sukhakarta Holiday Home?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Rooms start from ₹1,799 per night for standard rooms. The family hall starts from ₹2,499 per night. Book directly at sukhakartaholidayhome.in for the best rates — no extra OTA fees."
+        "text": "Rooms start from ₹1,499 per night for standard rooms. The family hall starts from ₹2,499 per night. Book directly at sukhakartaholidayhome.in for the best rates — no extra OTA fees."
       }
     },
     {

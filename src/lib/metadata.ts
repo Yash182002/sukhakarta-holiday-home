@@ -144,4 +144,46 @@ export const PAGE_METADATA = {
     keywords:    ['book homestay alibag', 'alibag homestay booking'],
   }),
 
+  nearNagaonBeach: buildMetadata({
+    title: 'Holiday Home Near Nagaon Beach, Alibag',
+    description: 'Looking for a holiday home near Nagaon Beach, Alibag? Sukhakarta Holiday Home is just 10-12 minutes away. AC rooms, free WiFi, from ₹1499/night. Book direct.',
+    path: '/stay/near-nagaon-beach',
+    keywords: ['nagaon beach homestay', 'holiday home near nagaon beach'],
+  }),
+ 
+  nearAlibaugBeach: buildMetadata({
+    title: 'Holiday Home Near Alibag Beach, Maharashtra',
+    description: 'Stay near Alibag beach at Sukhakarta Holiday Home. Just 9 minutes away. Clean AC rooms, free parking, warm hospitality. From ₹1499/night. Direct booking.',
+    path: '/stay/near-alibaug-beach',
+    keywords: ['alibag beach homestay', 'stay near alibag beach'],
+  }),
+ 
+  nearVarsoliBeach: buildMetadata({
+    title: 'Holiday Home Near Varsoli Beach, Alibag',
+    description: 'Find the best homestay near Varsoli Beach, Alibag. Sukhakarta Holiday Home is close to Varsoli Beach. AC rooms, free WiFi. Book direct from ₹1499/night.',
+    path: '/stay/near-varsoli-beach',
+    keywords: ['varsoli beach homestay', 'holiday home near varsoli beach'],
+  }),
+ 
+  weekendGetaway: buildMetadata({
+    title: 'Best Weekend Getaway from Mumbai — Alibag Homestay',
+    description: 'Plan your perfect weekend getaway from Mumbai to Alibag. Stay at Sukhakarta Holiday Home. 2-3 hour drive or ferry from Gateway of India. From ₹1499/night.',
+    path: '/stay/weekend-getaway-from-mumbai',
+    keywords: ['weekend getaway from mumbai', 'mumbai to alibag weekend trip'],
+  }),
+ 
+  familyHomestay: buildMetadata({
+    title: 'Family Homestay in Alibag — Sukhakarta Holiday Home',
+    description: 'Looking for a family homestay in Alibag? Sukhakarta offers spacious family halls, AC rooms, safe parking, home-cooked meals. Up to 8 guests. Book direct.',
+    path: '/stay/family-homestay-alibag',
+    keywords: ['family homestay alibag', 'family stay alibag'],
+  }),
+ 
+  coupleHomestay: buildMetadata({
+    title: 'Couple-Friendly Homestay in Alibag — Romantic Getaway',
+    description: 'Planning a romantic getaway to Alibag? Sukhakarta Holiday Home offers couple-friendly rooms with mountain views. Clean, private, warm hosts. From ₹1499/night.',
+    path: '/stay/couple-homestay-alibag',
+    keywords: ['couple stay alibag', 'romantic getaway alibag'],
+  }),
+
 }
