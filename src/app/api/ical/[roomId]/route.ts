@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-/* ─── Use anon key as fallback so the route works even without service role ─── */
-const supabaseUrl    = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey    =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+/* ─── Lazy client creation — never instantiate at module scope, or
+   `next build` fails while collecting page data without env vars.
+   Uses anon key as fallback so the route works even without service role ─── */
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("[ical] Missing Supabase configuration");
+  }
+  _supabase = createClient(supabaseUrl, supabaseKey);
+  return _supabase;
+}
 
 /* ─── Shared CORS headers – Booking.com and Airbnb fetch from their servers ─── */
 const ICAL_HEADERS = {
@@ -29,6 +38,8 @@ export async function GET(
   const { roomId } = await context.params;
 
   try {
+    const supabase = getSupabase();
+
     /* ── 1. Room ── */
     const { data: room, error: roomError } = await supabase
       .from("rooms")

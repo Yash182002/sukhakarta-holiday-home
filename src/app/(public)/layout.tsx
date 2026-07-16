@@ -1,24 +1,7 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Outfit } from "next/font/google";
 import StyledJsxRegistry from "@/lib/styled-jsx-registry";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  variable: "--font-cormorant",
-  display: "swap",
-  preload: true,
-});
-
-const outfit = Outfit({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-outfit",
-  display: "swap",
-  preload: true,
-});
 
 export const metadata: Metadata = {
   title: {
@@ -64,51 +47,43 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${outfit.variable}`}>
-      <head>
-        <link rel="dns-prefetch" href="https://lzyigqadbokousphuxnx.supabase.co" />
+    <StyledJsxRegistry>
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; }
 
-        <style>{`
-          *, *::before, *::after { box-sizing: border-box; }
+        html {
+          margin: 0;
+          padding: 0;
+          background: #04070f;
+          overflow-x: hidden;
+        }
 
-          html {
-            margin: 0;
-            padding: 0;
-            background: #04070f;
-            overflow-x: hidden;
-          }
+        body {
+          margin: 0;
+          padding: 0;
+          background: #04070f;
+          overflow-x: hidden;
+        }
 
-          body {
-            margin: 0;
-            padding: 0;
-            background: #04070f;
-            overflow-x: hidden;
-          }
-
-          .navbar {
-            position: fixed !important;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 999 !important;
-          }
-          .mobile-overlay { z-index: 998 !important; }
-          .mobile-menu    { z-index: 999 !important; }
-        `}</style>
-      </head>
-      <body>
-        <StyledJsxRegistry>
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
-        </StyledJsxRegistry>
-      </body>
-    </html>
+        .navbar {
+          position: fixed !important;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 999 !important;
+        }
+        .mobile-overlay { z-index: 998 !important; }
+        .mobile-menu    { z-index: 999 !important; }
+      `}</style>
+      <Navbar />
+      <main>{children}</main>
+      <Footer />
+    </StyledJsxRegistry>
   );
 }

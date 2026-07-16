@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("[sync-calendar] Missing Supabase configuration");
+// Lazy client creation — never throw at module scope, or `next build`
+// fails while collecting page data when env vars aren't available.
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("[sync-calendar] Missing Supabase configuration");
+  }
+  _supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return _supabase;
 }
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 /* ── SSRF guard: only allow known calendar hostnames ── */
 const ALLOWED_CALENDAR_HOSTS = new Set([
@@ -94,6 +99,7 @@ function parseICalDate(value: string): Date | null {
 /* ── POST: sync one calendar ── */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     let body: any;
     try { body = await request.json(); }
     catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
@@ -211,6 +217,7 @@ export async function POST(request: NextRequest) {
 /* ── GET: cron batch sync (protected by middleware x-cron-secret) ── */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { data: syncs, error } = await supabase
       .from("external_calendar_sync")
       .select("id, room_id, platform, last_sync_at, sync_frequency_minutes")
