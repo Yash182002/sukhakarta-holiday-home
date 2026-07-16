@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 fetch("https://sukhakartaholidayhome.in/api/cron/vitals, {
+=======
+fetch("https://sukhakartaholidayhome.in/api/cron/vitals", {
+>>>>>>> cb57961 (Update dependencies and test cron script)
   headers: {
-    Authorization: "Bearer " + process.env.CRON_SECRET
+    Authorization: "Bearer YOUR_NEW_SECRET_HERE"
   }
 })
   .then(res => res.json())
