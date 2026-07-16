@@ -1,4 +1,4 @@
-fetch("http://localhost:3000/api/cron/vitals", {
+fetch("https://sukhakartaholidayhome.in/api/cron/vitals, {
   headers: {
     Authorization: "Bearer " + process.env.CRON_SECRET
   }
