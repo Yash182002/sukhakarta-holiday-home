@@ -160,6 +160,7 @@ const NAV_ITEMS = [
   { href: "/admin/content",     label: "Content",     icon: <IconContent /> },
   { href: "/admin/calendar",    label: "Calendar",    icon: <IconCalendar /> },
   { href: "/admin/gallery",    label: "Gallery",    icon: <IconGalleryImage /> },
+  { href: "/admin/seo", label: "SEO", icon: <IconContent /> },
 ];
 
 /* ─────────────────────────── Layout ─────────────────────────── */

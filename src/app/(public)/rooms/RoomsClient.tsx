@@ -87,11 +87,7 @@ const RoomCard = memo(({
       style={{ "--delay": `${index * 80}ms` } as React.CSSProperties}
     >
       <div className="card-image-wrap">
-        <div
-          className="card-img-bg"
-          style={{ backgroundImage: `url(${room.images[0]})` }}
-          aria-hidden="true"
-        />
+        <div className="card-img-bg" aria-hidden="true" />
         <Image
           src={room.images[0]} alt={room.name} fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
@@ -520,9 +516,7 @@ export default function RoomsClient({ initialRooms }: { initialRooms: DBRoom[] }
         .card-image-wrap { position: relative; height: 210px; overflow: hidden; background: #04070f; }
         .card-img-bg {
           position: absolute; inset: 0; z-index: 0;
-          background-size: cover; background-position: center;
-          filter: blur(16px) brightness(0.4) saturate(0.7);
-          transform: scale(1.1);
+          background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(14,165,233,0.12));
         }
         .card-image-overlay {
           position: absolute; inset: 0; z-index: 2;
