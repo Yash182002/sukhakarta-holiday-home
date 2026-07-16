@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-fetch("https://sukhakartaholidayhome.in/api/cron/vitals, {
-=======
 fetch("https://sukhakartaholidayhome.in/api/cron/vitals", {
->>>>>>> cb57961 (Update dependencies and test cron script)
   headers: {
     Authorization: "Bearer YOUR_NEW_SECRET_HERE"
   }
