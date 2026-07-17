@@ -1,6 +1,5 @@
 // FILE: src/app/api/cron/vitals/route.ts
-// UPDATED to match your actual existing seo_vitals table columns:
-// id, page_url, strategy, performance, accessibility, best_practices, seo, lcp_ms, cls, fid_ms
+// Uses UPSERT (not insert) so each page has exactly ONE row that's always current.
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -42,7 +41,6 @@ export async function GET(request: Request) {
       const cats = data.lighthouseResult?.categories;
       const audits = data.lighthouseResult?.audits;
 
-      // Extract raw millisecond/numeric values, not just display strings
       const lcpMs = audits?.["largest-contentful-paint"]?.numericValue ?? null;
       const clsValue = audits?.["cumulative-layout-shift"]?.numericValue ?? null;
       const fidMs = audits?.["max-potential-fid"]?.numericValue ?? null;
@@ -57,12 +55,16 @@ export async function GET(request: Request) {
         lcp_ms: lcpMs ? Math.round(lcpMs) : null,
         cls: clsValue,
         fid_ms: fidMs ? Math.round(fidMs) : null,
+        checked_at: new Date().toISOString(),
       };
 
-      const { error: insertError } = await supabase.from("seo_vitals").insert(row);
+      // UPSERT: update the existing row for this page+strategy, or insert if new
+      const { error: upsertError } = await supabase
+        .from("seo_vitals")
+        .upsert(row, { onConflict: "page_url,strategy" });
 
-      if (insertError) {
-        errors.push({ page, error: insertError.message });
+      if (upsertError) {
+        errors.push({ page, error: upsertError.message });
       } else {
         results.push(row);
       }
