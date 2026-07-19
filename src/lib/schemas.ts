@@ -261,7 +261,7 @@ export const faqSchema = {
       "name": "How do I reach Alibag from Mumbai?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "You can reach Alibag from Mumbai by: (1) Ferry from Gateway of India to Mandwa Jetty (about 1 hour), then bus/taxi to Alibag — most popular route. (2) By road via NH 66 — about 2.5 to 3 hours. We are located in Kurul, Alibag, just 2.5 km from Alibag ST Bus Depot."
+        "text": "You can reach Alibag from Mumbai by: (1) Ferry from Gateway of India to Mandwa Jetty (about 45 minutes), then bus/taxi to Alibag — most popular route. (2) By road via NH 66 — about 2.5 to 3 hours. We are located in Kurul, Alibag, just 2.1 km from Alibag ST Bus Depot."
       }
     },
     {
@@ -269,7 +269,7 @@ export const faqSchema = {
       "name": "Is Wi-Fi available at Sukhakarta Holiday Home?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes, high-speed Wi-Fi is available free of charge for all guests in all rooms."
+        "text": "Yes, (100/mbps) high-speed Wi-Fi is available free of charge for all guests in all rooms."
       }
     },
     {
@@ -285,7 +285,7 @@ export const faqSchema = {
       "name": "What is the cancellation policy?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Our cancellation policy is available at sukhakartaholidayhome.in/cancellation-policy. For the most current terms, please review the policy page or contact us at +91 80875 41496."
+        "text": "Our cancellation policy is available at 'https://sukhakartaholidayhome.in/cancellation-policy'. For the most current terms, please review the policy page or contact us at +91 80875 41496."
       }
     },
     {
