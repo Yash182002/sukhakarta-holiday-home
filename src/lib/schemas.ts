@@ -285,7 +285,7 @@ export const faqSchema = {
       "name": "What is the cancellation policy?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Our cancellation policy is available at 'https://sukhakartaholidayhome.in/cancellation-policy'. For the most current terms, please review the policy page or contact us at +91 80875 41496."
+        "text": "Our cancellation policy is available at https://sukhakartaholidayhome.in/cancellation-policy. For the most current terms, please review the policy page or contact us at +91 80875 41496."
       }
     },
     {
