@@ -12,6 +12,8 @@ const VALID_TASKS: Record<string, string> = {
   "vitals-batch1": "/api/cron/vitals-batch1",
   "vitals-batch2": "/api/cron/vitals-batch2",
   "vitals-batch3": "/api/cron/vitals-batch3",
+  "vitals-batch4": "/api/cron/vitals-batch4",
+  "vitals-batch5": "/api/cron/vitals-batch5",
   "broken-links": "/api/cron/broken-links",
   "blog-draft": "/api/cron/blog-draft",
 };

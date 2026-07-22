@@ -32,13 +32,14 @@ type BlogDraft = {
 };
 
 const ACTIONS = [
-  { key: "vitals-batch1", label: "Check Vitals — Batch 1 (Home, Rooms, Book, FAQ, Blog)" },
-  { key: "vitals-batch2", label: "Check Vitals — Batch 2 (Gallery, Places, About, Contact, Nagaon)" },
-  { key: "vitals-batch3", label: "Check Vitals — Batch 3 (Other Stay Pages)" },
+  { key: "vitals-batch1", label: "Check Vitals — Batch 1 (Home, Rooms, Book)" },
+  { key: "vitals-batch2", label: "Check Vitals — Batch 2 (FAQ, Blog, Gallery)" },
+  { key: "vitals-batch3", label: "Check Vitals — Batch 3 (Places, About, Contact)" },
+  { key: "vitals-batch4", label: "Check Vitals — Batch 4 (Nagaon, Alibaug, Varsoli)" },
+  { key: "vitals-batch5", label: "Check Vitals — Batch 5 (Weekend, Family, Couple)" },
   { key: "broken-links", label: "Scan for Broken Links" },
   { key: "blog-draft", label: "Generate New Blog Draft" },
 ];
-
 export default function SEODashboard() {
   const [vitals, setVitals] = useState<Vital[]>([]);
   const [brokenLinks, setBrokenLinks] = useState<BrokenLink[]>([]);
