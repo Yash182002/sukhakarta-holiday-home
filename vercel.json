@@ -1,16 +1,9 @@
 {
   "crons": [
-    {
-      "path": "/api/cron/vitals",
-      "schedule": "30 0 * * *"
-    },
-    {
-      "path": "/api/cron/broken-links",
-      "schedule": "30 1 * * 3"
-    },
-    {
-      "path": "/api/cron/blog-draft",
-      "schedule": "30 2 * * 4"
-    }
+    { "path": "/api/cron/vitals-batch1", "schedule": "30 0 * * *" },
+    { "path": "/api/cron/vitals-batch2", "schedule": "35 0 * * *" },
+    { "path": "/api/cron/vitals-batch3", "schedule": "40 0 * * *" },
+    { "path": "/api/cron/broken-links", "schedule": "30 1 * * 3" },
+    { "path": "/api/cron/blog-draft", "schedule": "30 2 * * 4" }
   ]
 }

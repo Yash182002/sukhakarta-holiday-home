@@ -1,12 +1,11 @@
-// FILE: src/app/api/cron/vitals/route.ts
-// Uses UPSERT (not insert) so each page has exactly ONE row that's always current.
-
+// FILE: src/app/api/cron/vitals-batch1/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-const PAGES = ["/", "/rooms", "/book", "/faq"];
+const PAGES = ["/", "/rooms", "/book", "/faq", "/blog"];
 const BASE_URL = "https://sukhakartaholidayhome.in";
 
 export async function GET(request: Request) {
@@ -32,15 +31,10 @@ export async function GET(request: Request) {
     try {
       const res = await fetch(apiUrl);
       const data = await res.json();
-
-      if (data.error) {
-        errors.push({ page, error: data.error.message });
-        continue;
-      }
+      if (data.error) { errors.push({ page, error: data.error.message }); continue; }
 
       const cats = data.lighthouseResult?.categories;
       const audits = data.lighthouseResult?.audits;
-
       const lcpMs = audits?.["largest-contentful-paint"]?.numericValue ?? null;
       const clsValue = audits?.["cumulative-layout-shift"]?.numericValue ?? null;
       const fidMs = audits?.["max-potential-fid"]?.numericValue ?? null;
@@ -58,25 +52,16 @@ export async function GET(request: Request) {
         checked_at: new Date().toISOString(),
       };
 
-      // UPSERT: update the existing row for this page+strategy, or insert if new
       const { error: upsertError } = await supabase
         .from("seo_vitals")
         .upsert(row, { onConflict: "page_url,strategy" });
 
-      if (upsertError) {
-        errors.push({ page, error: upsertError.message });
-      } else {
-        results.push(row);
-      }
+      if (upsertError) errors.push({ page, error: upsertError.message });
+      else results.push(row);
     } catch (err: any) {
       errors.push({ page, error: err.message || "Unknown error" });
     }
   }
 
-  return NextResponse.json({
-    success: errors.length === 0,
-    checked: results.length,
-    results,
-    errors,
-  });
+  return NextResponse.json({ success: errors.length === 0, checked: results.length, results, errors });
 }
