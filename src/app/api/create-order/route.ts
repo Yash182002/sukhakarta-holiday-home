@@ -30,7 +30,7 @@ function rateLimit(ip: string, limit = 10, windowMs = 60_000): boolean {
 function validateAmount(raw: unknown): number | null {
   if (typeof raw !== "number") return null;
   if (!Number.isInteger(raw)) return null;   // reject floats like 999.99
-  if (raw < 100) return null;                // min ₹100
+  if (raw < 1) return null;                // min ₹100
   if (raw > 500_000) return null;            // max ₹5,00,000
   return raw;
 }
