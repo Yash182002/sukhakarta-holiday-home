@@ -335,7 +335,7 @@ export default function BookingPage() {
       try {
         const [bookingsResult, blockedResult] = await Promise.all([
           supabase.from("bookings").select("check_in, check_out").eq("status", "confirmed"),
-         supabase.from("room_blocked_dates").select("date"),
+         supabase.from("room_blocked_dates").select("blocked_date"),
         ]);
         if (!mounted) return;
         const dates = new Set<string>();
