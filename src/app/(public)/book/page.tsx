@@ -340,7 +340,7 @@ export default function BookingPage() {
         if (!mounted) return;
         const dates = new Set<string>();
         if (bookingsResult.data) getBlockedDates(bookingsResult.data).forEach(d => dates.add(d));
-        if (blockedResult.data) blockedResult.data.forEach(d => dates.add(d.date));
+        if (blockedResult.data) blockedResult.data.forEach(d => dates.add(d.blocked_date));
         setBlockedDates(Array.from(dates));
       } catch (error) { console.error("Error loading blocked dates:", error); }
     };
