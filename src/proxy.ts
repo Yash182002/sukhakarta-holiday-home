@@ -52,7 +52,7 @@ export function proxy(request: NextRequest) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https://*.supabase.co https://maps.googleapis.com https://maps.gstatic.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.resend.com https://api.razorpay.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.resend.com https://api.razorpay.com https://lumberjack.razorpay.com",
       "frame-src https://www.google.com https://maps.google.com https://checkout.razorpay.com https://api.razorpay.com",
       "object-src 'none'",
       "base-uri 'self'",
