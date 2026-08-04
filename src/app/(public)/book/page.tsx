@@ -281,6 +281,37 @@ export default function BookingPage() {
     checkIn: "", checkOut: "", guests: "",
   });
 
+  // Pre-fill contact details for logged-in customers so they only need
+  // to pick dates + guest count.
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    (async () => {
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .single();
+
+      if (cancelled) return;
+
+      setForm(p => ({
+        ...p,
+        name:  p.name  || profile?.full_name || (user.user_metadata?.full_name as string) || "",
+        email: p.email || user.email || "",
+        phone: p.phone || profile?.phone || (user.user_metadata?.phone as string) || "",
+      }));
+    })();
+
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Only hide the contact fields once we actually have all three values —
+  // protects against logged-in users whose profile is missing name/phone.
+  const hasSavedContactInfo = Boolean(user && form.name && form.email && form.phone);
+
   const today    = useMemo(() => new Date().toISOString().split("T")[0], []);
   const tomorrow = useMemo(() => {
     const d = new Date(); d.setDate(d.getDate() + 1);
@@ -631,33 +662,39 @@ export default function BookingPage() {
           {/* ── Form ── */}
           <div className="form-section reveal">
             <h2>Reservation Details</h2>
-            <p className="form-subtitle">All fields are mandatory</p>
+            <p className="form-subtitle">
+              {hasSavedContactInfo ? "Just pick your dates and guest count" : "All fields are mandatory"}
+            </p>
 
-            <div className="form-group">
-              <label>Full Name *</label>
-              <input className={`input ${errors.name ? "error" : ""}`} placeholder="Your full name"
-                value={form.name} onChange={handleNameChange}
-                onBlur={() => setErrors(p => ({ ...p, name: validateName(form.name) }))} />
-              {errors.name && <span className="error-text">{errors.name}</span>}
-            </div>
+            {!hasSavedContactInfo && (
+              <>
+                <div className="form-group">
+                  <label>Full Name *</label>
+                  <input className={`input ${errors.name ? "error" : ""}`} placeholder="Your full name"
+                    value={form.name} onChange={handleNameChange}
+                    onBlur={() => setErrors(p => ({ ...p, name: validateName(form.name) }))} />
+                  {errors.name && <span className="error-text">{errors.name}</span>}
+                </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Email *</label>
-                <input className={`input ${errors.email ? "error" : ""}`} type="email"
-                  placeholder="Enter Your Email" value={form.email} onChange={handleEmailChange}
-                  onBlur={() => setErrors(p => ({ ...p, email: validateEmail(form.email) }))} />
-                {errors.email && <span className="error-text">{errors.email}</span>}
-              </div>
-              <div className="form-group">
-                <label>Phone *</label>
-                <input className={`input ${errors.phone ? "error" : ""}`} type="tel"
-                  placeholder="Your 10-digit number" value={form.phone}
-                  onChange={handlePhoneChange} maxLength={10}
-                  onBlur={() => setErrors(p => ({ ...p, phone: validatePhone(form.phone) }))} />
-                {errors.phone && <span className="error-text">{errors.phone}</span>}
-              </div>
-            </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Email *</label>
+                    <input className={`input ${errors.email ? "error" : ""}`} type="email"
+                      placeholder="Enter Your Email" value={form.email} onChange={handleEmailChange}
+                      onBlur={() => setErrors(p => ({ ...p, email: validateEmail(form.email) }))} />
+                    {errors.email && <span className="error-text">{errors.email}</span>}
+                  </div>
+                  <div className="form-group">
+                    <label>Phone *</label>
+                    <input className={`input ${errors.phone ? "error" : ""}`} type="tel"
+                      placeholder="Your 10-digit number" value={form.phone}
+                      onChange={handlePhoneChange} maxLength={10}
+                      onBlur={() => setErrors(p => ({ ...p, phone: validatePhone(form.phone) }))} />
+                    {errors.phone && <span className="error-text">{errors.phone}</span>}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="form-row">
               <div className="form-group">
