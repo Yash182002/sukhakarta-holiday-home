@@ -26,6 +26,10 @@ const CATEGORIES = [
   { id: "other",        label: "Other"        },
 ];
 
+// Number of cards treated as "above the fold" — these skip the
+// scroll-reveal animation entirely so they don't block LCP.
+const ABOVE_FOLD_COUNT = 8;
+
 function getSpan(index: number, type: "image" | "video", featured: boolean): string {
   if (featured) return "span-2-2";
   const patterns = ["span-1-2", "span-2-1", "span-1-1", "span-1-1", "span-2-1", "span-1-2"];
@@ -39,7 +43,11 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
   const [activeCategory, setActiveCategory] = useState("all");
   const [lightbox, setLightbox] = useState<MediaItem | null>(null);
   const [lightboxIdx, setLightboxIdx] = useState(0);
-  const [revealedSet, setRevealedSet] = useState<Set<string>>(new Set());
+  // Above-the-fold cards are revealed immediately — no JS/observer
+  // dependency for their paint, which is what was blocking LCP.
+  const [revealedSet, setRevealedSet] = useState<Set<string>>(
+    () => new Set(initialItems.slice(0, ABOVE_FOLD_COUNT).map(i => i.id))
+  );
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Realtime — reload without showing a spinner
@@ -54,16 +62,27 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
   }
 
   useEffect(() => {
-  // Fetch fresh data on every mount — don't rely solely on SSR seed
-  loadGallery();
+    // Defer the refetch + realtime subscription slightly so it doesn't
+    // compete with the initial paint/LCP measurement window. SSR data
+    // is already on screen, so this is just keeping things fresh.
+    const idleId = ("requestIdleCallback" in window)
+      ? (window as any).requestIdleCallback(loadGallery, { timeout: 2000 })
+      : window.setTimeout(loadGallery, 300);
 
-  const channel = supabase
-    .channel("gallery-realtime")
-    .on("postgres_changes", { event: "*", schema: "public", table: "gallery_items" }, loadGallery)
-    .subscribe();
+    const channel = supabase
+      .channel("gallery-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "gallery_items" }, loadGallery)
+      .subscribe();
 
-  return () => { supabase.removeChannel(channel); };
-}, []);
+    return () => {
+      supabase.removeChannel(channel);
+      if ("requestIdleCallback" in window) {
+        (window as any).cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId as number);
+      }
+    };
+  }, []);
 
   // Filter
   useEffect(() => {
@@ -74,7 +93,7 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
     }
   }, [activeCategory, items]);
 
-  // Scroll reveal
+  // Scroll reveal — only for cards past the above-the-fold cutoff
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver(
@@ -90,7 +109,9 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
       { threshold: 0.05, rootMargin: "0px 0px -60px 0px" }
     );
     setTimeout(() => {
-      document.querySelectorAll(".gl-card[data-id]").forEach(el => observerRef.current?.observe(el));
+      document
+        .querySelectorAll(".gl-card[data-id]:not(.no-reveal)")
+        .forEach(el => observerRef.current?.observe(el));
     }, 100);
     return () => observerRef.current?.disconnect();
   }, [filtered]);
@@ -219,13 +240,14 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
           <div className="gl-mosaic">
             {filtered.map((item, idx) => {
               const span = getSpan(idx, item.media_type, item.is_featured);
+              const aboveFold = idx < ABOVE_FOLD_COUNT;
               const revealed = revealedSet.has(item.id);
               return (
                 <div
                   key={item.id}
                   data-id={item.id}
-                  className={`gl-card ${span}${revealed ? " revealed" : ""}`}
-                  style={{ "--delay": `${(idx % 6) * 60}ms` } as React.CSSProperties}
+                  className={`gl-card ${span}${aboveFold ? " no-reveal" : ""}${revealed ? " revealed" : ""}`}
+                  style={aboveFold ? undefined : ({ "--delay": `${(idx % 6) * 60}ms` } as React.CSSProperties)}
                   onClick={() => openLightbox(item)}
                 >
                   {item.media_type === "video" ? (
@@ -235,13 +257,23 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
                       muted
                       loop
                       playsInline
+                      preload={aboveFold ? "metadata" : "none"}
                       onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
                       onMouseLeave={e => { (e.currentTarget as HTMLVideoElement).pause(); (e.currentTarget as HTMLVideoElement).currentTime = 0; }}
                       poster={item.thumbnail_url}
                     />
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={item.media_url} alt={item.title || "Gallery image"} className="gl-media" loading="lazy" />
+                    <img
+                      src={item.media_url}
+                      alt={item.title || "Gallery image"}
+                      className="gl-media"
+                      loading={aboveFold ? "eager" : "lazy"}
+                      // First card is the LCP candidate — tell the
+                      // browser to fetch it before anything else.
+                      fetchPriority={idx === 0 ? "high" : aboveFold ? "auto" : "low"}
+                      decoding={idx === 0 ? "sync" : "async"}
+                    />
                   )}
 
                   <div className="gl-overlay">
@@ -382,6 +414,9 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
 
         .gl-card { position: relative; border-radius: 16px; overflow: hidden; cursor: pointer; background: rgba(255,255,255,0.04); border: 1px solid rgba(249,115,22,0.12); opacity: 0; transform: translateY(30px) scale(0.97); transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms), transform 0.55s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms), border-color 0.3s, box-shadow 0.3s; }
         .gl-card.revealed { opacity: 1; transform: none; }
+        /* Above-the-fold cards render fully visible immediately — no
+           animation dependency, so the LCP image paints on first frame. */
+        .gl-card.no-reveal { opacity: 1; transform: none; transition: border-color 0.3s, box-shadow 0.3s; }
         .gl-card:hover { border-color: rgba(249,115,22,0.6); box-shadow: 0 20px 50px rgba(249,115,22,0.22), 0 0 0 1px rgba(249,115,22,0.3); z-index: 2; }
         .gl-card:hover .gl-media { transform: scale(1.07); }
         .gl-card:hover .gl-overlay { opacity: 1; }
