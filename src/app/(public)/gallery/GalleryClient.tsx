@@ -65,9 +65,15 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
     // Defer the refetch + realtime subscription slightly so it doesn't
     // compete with the initial paint/LCP measurement window. SSR data
     // is already on screen, so this is just keeping things fresh.
-    const idleId = ("requestIdleCallback" in window)
-      ? (window as any).requestIdleCallback(loadGallery, { timeout: 2000 })
-      : window.setTimeout(loadGallery, 300);
+    const ric = (window as typeof window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    });
+
+    const usingIdle = typeof ric.requestIdleCallback === "function";
+    const idleId: number = usingIdle
+      ? ric.requestIdleCallback!(loadGallery, { timeout: 2000 })
+      : setTimeout(loadGallery, 300) as unknown as number;
 
     const channel = supabase
       .channel("gallery-realtime")
@@ -76,10 +82,10 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
 
     return () => {
       supabase.removeChannel(channel);
-      if ("requestIdleCallback" in window) {
-        (window as any).cancelIdleCallback(idleId);
+      if (usingIdle && typeof ric.cancelIdleCallback === "function") {
+        ric.cancelIdleCallback(idleId);
       } else {
-        window.clearTimeout(idleId as number);
+        clearTimeout(idleId);
       }
     };
   }, []);
