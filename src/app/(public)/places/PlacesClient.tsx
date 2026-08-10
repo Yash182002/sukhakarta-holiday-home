@@ -161,8 +161,8 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
       {/* Hero */}
       <div className="hero">
         <div className="hero-content">
-          <div className="hero-badge reveal">✦ Places to Visit in Alibag ✦</div>
-          <h1 className="hero-title">Explore Alibag</h1>
+          <div className="hero-badge reveal">✦ Explore Alibag ✦</div>
+          <h1 className="hero-title">Places to Visit in Alibag</h1>
           <p className="hero-subtitle">
            Discover the best places to visit in Alibag and nearby areas, including beaches, historic forts, temples, nature attractions and adventure activities. Find approximate distances and travel times from Sukhakarta Holiday Home to plan your trip.
           </p>
