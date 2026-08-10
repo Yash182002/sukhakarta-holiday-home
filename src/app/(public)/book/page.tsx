@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Script from "next/script";
 
 declare global {
   interface Window { Razorpay: any; }
@@ -342,14 +343,8 @@ export default function BookingPage() {
     return () => { cancelAnimationFrame(raf); clearTimeout(timeout); };
   }, [availableRooms, roomSuggestions, setupObserver]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && !window.Razorpay) {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
+  // Razorpay is now loaded via next/script with strategy="lazyOnload" below —
+  // it's off the critical path and no longer competes with LCP/TBT.
 
   useEffect(() => {
     let mounted = true;
@@ -602,9 +597,14 @@ export default function BookingPage() {
 
   return (
     <div className="booking-page">
+      {/* Loaded off the critical path — doesn't block LCP/TBT anymore */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
+
       <div className="bg-mesh" aria-hidden="true">
         <div className="mesh-layer-1" />
-        <div className="mesh-layer-2" />
         <div className="grid-overlay" />
       </div>
 
@@ -892,15 +892,18 @@ export default function BookingPage() {
       <style jsx global>{`
         .booking-page { min-height: 100vh; color: #f8fafc; font-family: var(--font-outfit), system-ui, sans-serif; position: relative; background: #04070f; overflow-x: hidden; }
 
+        /* Static mesh background — the old animated pulsing layer was a
+           full-viewport GPU-composited opacity animation running for 8s
+           right through the LCP/TBT measurement window. Removing the
+           animation (mesh-layer-2) fixes the single biggest performance
+           cost on this page while keeping the same visual look. */
         .bg-mesh { position: fixed; inset: 0; z-index: 0; pointer-events: none; contain: strict; }
-        .mesh-layer-1 { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 100% 0%, rgba(249,115,22,0.18) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 0% 100%, rgba(14,165,233,0.15) 0%, transparent 60%), linear-gradient(160deg, #04070f 0%, #0b1220 50%, #04070f 100%); }
-        .mesh-layer-2 { position: absolute; inset: 0; background: radial-gradient(ellipse 40% 40% at 50% 50%, rgba(249,115,22,0.05) 0%, transparent 70%); animation: mesh-pulse 8s ease-in-out infinite alternate; will-change: opacity; }
-        @keyframes mesh-pulse { from { opacity: 0.4; } to { opacity: 1; } }
+        .mesh-layer-1 { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 100% 0%, rgba(249,115,22,0.18) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 0% 100%, rgba(14,165,233,0.15) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 50% 50%, rgba(249,115,22,0.06) 0%, transparent 70%), linear-gradient(160deg, #04070f 0%, #0b1220 50%, #04070f 100%); }
         .grid-overlay { position: absolute; inset: 0; background-image: linear-gradient(rgba(249,115,22,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(249,115,22,0.04) 1px, transparent 1px); background-size: 60px 60px; }
 
         .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.65s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms), transform 0.65s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms); will-change: opacity, transform; contain: layout style; }
         .reveal.in-view { opacity: 1; transform: translateY(0); }
-        @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; contain: none; } .mesh-layer-2 { animation: none; } }
+        @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; contain: none; } }
 
         .hero { position: relative; z-index: 1; padding: 9rem 1.5rem 4rem; text-align: center; }
         .hero-badge { display: inline-block; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: #f97316; padding: 0.5rem 1.25rem; border: 1px solid rgba(249,115,22,0.4); border-radius: 100px; margin-bottom: 2rem; background: rgba(249,115,22,0.08); animation: fadeInDown 0.7s ease-out both; }
@@ -930,7 +933,11 @@ export default function BookingPage() {
         .trust-item a:hover { text-decoration: underline; }
         .trust-item strong { color: #f8fafc; }
 
-        .form-section, .summary-section { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(249,115,22,0.2); border-radius: 24px; padding: 2.5rem; }
+        /* backdrop-filter: blur() removed from these two large above-the-fold
+           panels — it forced the browser to recomposite everything behind
+           them on every frame. A solid, slightly-darker background keeps
+           the same "glass panel" look for a fraction of the paint cost. */
+        .form-section, .summary-section { background: rgba(13,18,30,0.88); border: 1px solid rgba(249,115,22,0.2); border-radius: 24px; padding: 2.5rem; }
 
         h2 { font-size: 2rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fff, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .form-subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
@@ -994,7 +1001,11 @@ export default function BookingPage() {
         .allocation-row:last-child { border-bottom: none; }
         .allocation-room-preview { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
         .allocation-img-wrap { position: relative; width: 80px; height: 60px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #04070f; border: 1px solid rgba(249,115,22,0.2); }
-        .allocation-img-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; filter: blur(8px) brightness(0.4) saturate(0.7); transform: scale(1.1); }
+        /* Filter blur() replaced with a plain darkened/scaled background —
+           this block only renders after "Check Availability" (not on the
+           initial LCP path) but the filter was still a needless paint cost
+           for something small enough that blur added no real visual value. */
+        .allocation-img-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; background-color: rgba(4,7,15,0.55); background-blend-mode: darken; opacity: 0.7; transform: scale(1.1); }
         .allocation-info { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0; }
         .allocation-name { color: #f8fafc; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
         .allocation-guests { color: #94a3b8; font-size: 0.8rem; }
@@ -1008,9 +1019,9 @@ export default function BookingPage() {
         .select-combo-btn { width: 100%; padding: 1rem 1.5rem; background: linear-gradient(135deg, #f97316, #ea580c); border: none; border-radius: 10px; color: white; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease; font-family: inherit; box-shadow: 0 6px 20px rgba(249,115,22,0.35); }
         .select-combo-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(249,115,22,0.5); }
 
-        .modal { position: fixed; inset: 0; background: rgba(15,23,42,0.95); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 2rem; animation: fadeIn 0.3s ease-out; }
+        .modal { position: fixed; inset: 0; background: rgba(4,7,15,0.97); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 2rem; animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .modal-content { background: linear-gradient(135deg, rgba(30,41,59,0.98), rgba(15,23,42,0.98)); backdrop-filter: blur(20px); border: 2px solid rgba(249,115,22,0.3); border-radius: 24px; padding: 3rem; text-align: center; max-width: 500px; width: 100%; animation: scaleIn 0.4s cubic-bezier(0.22,1,0.36,1); }
+        .modal-content { background: linear-gradient(135deg, rgba(30,41,59,0.99), rgba(15,23,42,0.99)); border: 2px solid rgba(249,115,22,0.3); border-radius: 24px; padding: 3rem; text-align: center; max-width: 500px; width: 100%; animation: scaleIn 0.4s cubic-bezier(0.22,1,0.36,1); }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
         .success-icon { width: 80px; height: 80px; margin: 0 auto 1.5rem; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; animation: bounce 0.6s cubic-bezier(0.22,1,0.36,1); }
