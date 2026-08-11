@@ -98,6 +98,14 @@ function formatDate(iso: string): string {
   });
 }
 
+/** Splits a raw string on commas into clean, deduped, lowercase tokens. */
+function splitTags(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 /* ─────────────────────────── SVG Icons ─────────────────────────── */
 
 function IconPlus() {
@@ -314,24 +322,34 @@ export default function AdminBlogPage() {
     });
   }
 
-  /* ── tags ── */
-  function addTag() {
-    const t = tagInput.trim().toLowerCase();
-    if (t && !(editing?.tags ?? []).includes(t)) {
-      setField("tags", [...(editing?.tags ?? []), t]);
-    }
+  /* ── tags ──
+     Accepts either a single tag or a comma-separated batch (typed or pasted)
+     and adds every non-empty, deduped piece in one go. */
+  function addTag(raw?: string) {
+    const pieces = splitTags(raw ?? tagInput);
+    if (pieces.length === 0) { setTagInput(""); return; }
+    setEditing((prev) => {
+      if (!prev) return prev;
+      const existing = prev.tags ?? [];
+      const merged = Array.from(new Set([...existing, ...pieces]));
+      return { ...prev, tags: merged };
+    });
     setTagInput("");
   }
   function removeTag(tag: string) {
     setField("tags", (editing?.tags ?? []).filter((t) => t !== tag));
   }
 
-  /* ── meta keywords ── */
-  function addMetaKeyword() {
-    const k = metaKeywordInput.trim().toLowerCase();
-    if (k && !(editing?.meta_keywords ?? []).includes(k)) {
-      setField("meta_keywords", [...(editing?.meta_keywords ?? []), k]);
-    }
+  /* ── meta keywords (same batch-paste behavior as tags) ── */
+  function addMetaKeyword(raw?: string) {
+    const pieces = splitTags(raw ?? metaKeywordInput);
+    if (pieces.length === 0) { setMetaKeywordInput(""); return; }
+    setEditing((prev) => {
+      if (!prev) return prev;
+      const existing = prev.meta_keywords ?? [];
+      const merged = Array.from(new Set([...existing, ...pieces]));
+      return { ...prev, meta_keywords: merged };
+    });
     setMetaKeywordInput("");
   }
   function removeMetaKeyword(kw: string) {
@@ -814,17 +832,25 @@ export default function AdminBlogPage() {
 
               {/* Tags */}
               <div className="bl-form-group">
-                <label className="bl-label">Tags</label>
+                <label className="bl-label">Tags <span className="bl-optional">(comma-separated paste supported)</span></label>
                 <div className="bl-tag-input-row">
                   <input
                     type="text"
                     className="bl-input"
-                    placeholder="Add a tag and press Enter…"
+                    placeholder="Add tags, comma-separated…"
                     value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // A comma (typed or pasted) commits every piece before it.
+                      if (val.includes(",")) {
+                        addTag(val);
+                      } else {
+                        setTagInput(val);
+                      }
+                    }}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
                   />
-                  <button className="bl-add-tag-btn" onClick={addTag} type="button">Add</button>
+                  <button className="bl-add-tag-btn" onClick={() => addTag()} type="button">Add</button>
                 </div>
                 {(editing.tags ?? []).length > 0 && (
                   <div className="bl-tags-list">
@@ -853,17 +879,24 @@ export default function AdminBlogPage() {
 
               {/* SEO Meta Keywords */}
               <div className="bl-form-group">
-                <label className="bl-label">Meta Keywords <span className="bl-optional">(SEO)</span></label>
+                <label className="bl-label">Meta Keywords <span className="bl-optional">(SEO, comma-separated paste supported)</span></label>
                 <div className="bl-tag-input-row">
                   <input
                     type="text"
                     className="bl-input"
-                    placeholder="Add a keyword and press Enter…"
+                    placeholder="Add keywords, comma-separated…"
                     value={metaKeywordInput}
-                    onChange={(e) => setMetaKeywordInput(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.includes(",")) {
+                        addMetaKeyword(val);
+                      } else {
+                        setMetaKeywordInput(val);
+                      }
+                    }}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMetaKeyword(); } }}
                   />
-                  <button className="bl-add-tag-btn" onClick={addMetaKeyword} type="button">Add</button>
+                  <button className="bl-add-tag-btn" onClick={() => addMetaKeyword()} type="button">Add</button>
                 </div>
                 {(editing.meta_keywords ?? []).length > 0 && (
                   <div className="bl-tags-list">
