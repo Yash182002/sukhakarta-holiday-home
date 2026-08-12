@@ -387,14 +387,32 @@ export default function BookingPage() {
     return selectedRooms.reduce((sum, r) => sum + (r.pricePerNight * nights), 0);
   }, [selectedRooms, nights]);
 
-  const validateName     = (v: string) => !v.trim() ? "Full name is required" : v.trim().length < 2 ? "Name must be at least 2 characters" : !/^[a-zA-Z\s]+$/.test(v) ? "Name should only contain letters and spaces" : "";
+  // Allows apostrophes, hyphens and periods (D'Souza, Anne-Marie, etc.) —
+  // the old letters-and-spaces-only regex silently rejected real saved
+  // names that were pre-filled correctly, blocking existing customers
+  // before they ever touched the field.
+  const validateName     = (v: string) => !v.trim() ? "Full name is required" : v.trim().length < 2 ? "Name must be at least 2 characters" : !/^[a-zA-Z\s.'-]+$/.test(v) ? "Name should only contain letters, spaces, and ' - ." : "";
   const validateEmail    = (v: string) => !v.trim() ? "Email is required" : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Please enter a valid email address" : "";
-  const validatePhone    = (v: string) => { const n = v.replace(/\D/g, ""); return !v.trim() ? "Phone number is required" : n.length !== 10 ? "Phone number must be exactly 10 digits" : !/^[6-9]/.test(n) ? "Phone number must start with 6, 7, 8, or 9" : ""; };
+  // Normalizes a leading 0 (landline-style entry) or a 91 country-code
+  // prefix down to the bare 10-digit mobile number before validating —
+  // previously a number like "09876543210" or "919876543210" was rejected
+  // outright instead of being cleaned up first.
+  const normalizePhone = (raw: string) => {
+    let n = raw.replace(/\D/g, "");
+    if (n.length === 11 && n.startsWith("0")) n = n.slice(1);
+    else if (n.length === 12 && n.startsWith("91")) n = n.slice(2);
+    else if (n.length === 13 && n.startsWith("091")) n = n.slice(3);
+    return n;
+  };
+  const validatePhone    = (v: string) => { const n = normalizePhone(v); return !v.trim() ? "Phone number is required" : n.length !== 10 ? "Phone number must be exactly 10 digits" : !/^[6-9]/.test(n) ? "Phone number must start with 6, 7, 8, or 9" : ""; };
   const validateCheckIn  = (v: string) => !v ? "Check-in date is required" : v < today ? "Check-in date cannot be in the past" : blockedDates.includes(v) ? "This date is not available" : "";
   const validateCheckOut = (v: string, ci: string) => !v ? "Check-out date is required" : !ci ? "Please select check-in date first" : v <= ci ? "Check-out must be after check-in date" : "";
   const validateGuests   = (v: number) => (!v || v < 1) ? "At least 1 guest is required" : v > 50 ? "Maximum 50 guests allowed" : "";
 
-  const validateForm = (): boolean => {
+  // Returns the computed errors object (not just a boolean) so callers can
+  // report exactly which field failed and why, instead of a generic
+  // "please fix the errors" with no indication of the actual problem.
+  const validateForm = () => {
     const newErrors = {
       name:     validateName(form.name),
       email:    validateEmail(form.email),
@@ -404,11 +422,16 @@ export default function BookingPage() {
       guests:   validateGuests(form.guests),
     };
     setErrors(newErrors);
-    return !Object.values(newErrors).some(e => e !== "");
+    return newErrors;
   };
 
   const checkAvailability = useCallback(async () => {
-    if (!validateForm()) { setMessage("Please fix the errors before checking availability"); return; }
+    const formErrors = validateForm();
+    const failedMessages = Object.values(formErrors).filter(Boolean);
+    if (failedMessages.length > 0) {
+      setMessage(`Please fix: ${failedMessages.join(" · ")}`);
+      return;
+    }
     setMessage(""); setAvailableRooms([]); setSelectedRooms([]); setRoomSuggestions([]); setLoading(true);
     try {
       const { data: bookings } = await supabase
@@ -463,7 +486,12 @@ export default function BookingPage() {
 
   const handleSelectRooms = useCallback((combo: RoomAllocation[]) => {
     setSelectedRooms(combo);
-    if (!validateForm()) { alert("Please fill all required fields correctly"); return; }
+    const formErrors = validateForm();
+    const failedMessages = Object.values(formErrors).filter(Boolean);
+    if (failedMessages.length > 0) {
+      alert(`Please fix: ${failedMessages.join(" · ")}`);
+      return;
+    }
     if (!user) { setShowLoginPrompt(true); return; }
     startMultiRoomPayment(combo);
   }, [form, user]);
@@ -479,7 +507,7 @@ export default function BookingPage() {
           room_id:          allocation.roomId,
           customer_name:    form.name.trim(),
           email:            form.email.trim(),
-          phone:            form.phone.replace(/\D/g, ""),
+          phone:            normalizePhone(form.phone),
           check_in:         form.checkIn,
           check_out:        form.checkOut,
           guests:           allocation.guests,
@@ -559,7 +587,7 @@ export default function BookingPage() {
           setShowSuccess(true);
           setTimeout(() => router.push("/user/dashboard"), 3000);
         },
-        prefill: { name: form.name, email: form.email, contact: form.phone.replace(/\D/g, "") },
+        prefill: { name: form.name, email: form.email, contact: normalizePhone(form.phone) },
         theme:   { color: "#f97316" },
       };
 
