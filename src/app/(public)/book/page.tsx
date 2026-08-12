@@ -309,9 +309,30 @@ export default function BookingPage() {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Only hide the contact fields once we actually have all three values —
-  // protects against logged-in users whose profile is missing name/phone.
-  const hasSavedContactInfo = Boolean(user && form.name && form.email && form.phone);
+  // Normalizes a leading 0 (landline-style entry) or a 91 country-code
+  // prefix down to the bare 10-digit mobile number before validating —
+  // previously a number like "09876543210" or "919876543210" was rejected
+  // outright instead of being cleaned up first.
+  const normalizePhone = (raw: string) => {
+    let n = raw.replace(/\D/g, "");
+    if (n.length === 11 && n.startsWith("0")) n = n.slice(1);
+    else if (n.length === 12 && n.startsWith("91")) n = n.slice(2);
+    else if (n.length === 13 && n.startsWith("091")) n = n.slice(3);
+    return n;
+  };
+
+  // FIX: Only treat contact info as "saved" once the phone number is a
+  // genuinely complete, valid number — not just any non-empty string.
+  // Previously this checked `Boolean(form.phone)`, which became true after
+  // typing a single digit. That flipped `hasSavedContactInfo` to true mid-
+  // keystroke, which unmounted the entire name/email/phone block (including
+  // the input the user was actively typing into), making the phone field
+  // "disappear" and leaving form.phone empty when the form was submitted.
+  const hasSavedContactInfo = useMemo(() => {
+    if (!user || !form.name || !form.email) return false;
+    const digits = normalizePhone(form.phone);
+    return digits.length === 10 && /^[6-9]/.test(digits);
+  }, [user, form.name, form.email, form.phone]);
 
   const today    = useMemo(() => new Date().toISOString().split("T")[0], []);
   const tomorrow = useMemo(() => {
@@ -393,17 +414,6 @@ export default function BookingPage() {
   // before they ever touched the field.
   const validateName     = (v: string) => !v.trim() ? "Full name is required" : v.trim().length < 2 ? "Name must be at least 2 characters" : !/^[a-zA-Z\s.'-]+$/.test(v) ? "Name should only contain letters, spaces, and ' - ." : "";
   const validateEmail    = (v: string) => !v.trim() ? "Email is required" : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Please enter a valid email address" : "";
-  // Normalizes a leading 0 (landline-style entry) or a 91 country-code
-  // prefix down to the bare 10-digit mobile number before validating —
-  // previously a number like "09876543210" or "919876543210" was rejected
-  // outright instead of being cleaned up first.
-  const normalizePhone = (raw: string) => {
-    let n = raw.replace(/\D/g, "");
-    if (n.length === 11 && n.startsWith("0")) n = n.slice(1);
-    else if (n.length === 12 && n.startsWith("91")) n = n.slice(2);
-    else if (n.length === 13 && n.startsWith("091")) n = n.slice(3);
-    return n;
-  };
   const validatePhone    = (v: string) => { const n = normalizePhone(v); return !v.trim() ? "Phone number is required" : n.length !== 10 ? "Phone number must be exactly 10 digits" : !/^[6-9]/.test(n) ? "Phone number must start with 6, 7, 8, or 9" : ""; };
   const validateCheckIn  = (v: string) => !v ? "Check-in date is required" : v < today ? "Check-in date cannot be in the past" : blockedDates.includes(v) ? "This date is not available" : "";
   const validateCheckOut = (v: string, ci: string) => !v ? "Check-out date is required" : !ci ? "Please select check-in date first" : v <= ci ? "Check-out must be after check-in date" : "";
