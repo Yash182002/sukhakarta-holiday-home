@@ -166,13 +166,9 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
           <p className="hero-subtitle">
            Discover the best places to visit in Alibag and nearby areas, including beaches, historic forts, temples, nature attractions and adventure activities. Find approximate distances and travel times from Sukhakarta Holiday Home to plan your trip.
           </p>
-           <section className="hero-intro reveal">
+           <section   className="hero-intro reveal" style={{ '--delay': '0.45s' } as React.CSSProperties}>
       <p>
-        Sukhakarta Holiday Home sits in Kurul village, just minutes from Alibag's
-        most iconic beaches and historical forts. Whether you're planning a morning
-        walk along Varsoli Beach, a low-tide trek to Kolaba Fort, or a day trip to
-        Murud-Janjira, every major attraction is within easy reach. Use this guide
-        to plan your itinerary from our doorstep.
+        Sukhakarta Holiday Home sits in Kurul village, just minutes from Alibag's most iconic beaches and historical forts. Whether you're planning a morning walk along Varsoli Beach, a low-tide trek to Kolaba Fort, or a day trip to Murud-Janjira, every major attraction is within easy reach. Use this guide to plan your itinerary from our doorstep.
       </p>
     </section>
         </div>
@@ -618,14 +614,17 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
           .gallery-main { height: 250px; }
         }
 
-        .hero-intro {
-        max-width: 700px;
-        margin: 0 auto;
-        color: rgba(240, 244, 248, 0.65);
-        font-size: 1rem;
-        line-height: 1.8;
-        font-weight: 300;
-      }
+                .hero-intro {
+            max-width: 860px;
+            margin: 0 auto;
+            color: rgba(240, 244, 248, 0.55);
+            font-size: 1.05rem;
+            line-height: 1.9;
+            font-weight: 300;
+            border-top: 1px solid rgba(249, 115, 22, 0.2);
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+          }
       `}</style>
     </div>
   );
