@@ -70,7 +70,7 @@ export default function Footer() {
   const socialLinks = [
     // { icon: <FacebookIcon />, name: 'Facebook', href: '#' },
     { icon: <InstagramIcon />, name: 'Instagram', href: 'https://www.instagram.com/sukhakarta.holiday.home/' },
-    { icon: <WhatsAppIcon />, name: 'WhatsApp', href: 'https://wa.me/918087541496' rel="nofollow noopener noreferrer" target="_blank"}
+    { icon: <WhatsAppIcon />, name: 'WhatsApp', href: 'https://wa.me/918087541496'}
   ];
 
   return (
