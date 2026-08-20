@@ -126,7 +126,7 @@ export default function ContactPage() {
 
   const contactMethods = [
     { icon: <PhoneIcon />,    title: "Call Us",   details: "+91 80875 41496",                      subtext: "Mon - Sun, 8 AM - 10 PM", action: "tel:+918087541496",                          color: "#0ea5e9" },
-    { icon: <WhatsAppIcon />, title: "WhatsApp",  details: "Quick Response",                       subtext: "Available 24/7",          action: "https://wa.me/918087541496",   target="_blank" rel="nofollow noopener noreferrer"    color: "#22c55e" },
+    { icon: <WhatsAppIcon />, title: "WhatsApp",  details: "Quick Response",                       subtext: "Available 24/7",          action: "https://wa.me/918087541496",                 color: "#22c55e" },
     { icon: <MailIcon />,     title: "Email",     details: "sukhakartaholidayhome@gmail.com",       subtext: "Response within 24 hours",action: "mailto:sukhakartaholidayhome@gmail.com",      color: "#f97316" },
     { icon: <MapPinIcon />,   title: "Visit Us",  details: "Alibag, Maharashtra",                  subtext: "Get Directions",          action: "#map",                                       color: "#ec4899" },
   ];
