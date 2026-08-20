@@ -10,7 +10,6 @@ export default function robots(): MetadataRoute.Robots {
           '/user/',
           '/admin/',
           '/api/',
-          '/_next/',
           '/book/confirmation',
           '/book/success',
           '/book/cancel',
