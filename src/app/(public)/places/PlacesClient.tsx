@@ -617,6 +617,15 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
           .modal-actions { grid-template-columns: 1fr; }
           .gallery-main { height: 250px; }
         }
+
+        .hero-intro {
+        max-width: 700px;
+        margin: 0 auto;
+        color: rgba(240, 244, 248, 0.65);
+        font-size: 1rem;
+        line-height: 1.8;
+        font-weight: 300;
+      }
       `}</style>
     </div>
   );
