@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: {
     default: "Sukhakarta Holiday Home | Best Homestay Near Alibag Beach",
-    template: "%s | Sukhakarta Holiday Home Alibag",
+    template: "%s | Sukhakarta Holiday Home",
   },
   description:
     "Peaceful homestay in Alibag, Maharashtra. AC rooms with mountain views, just minutes from Nagaon & Varsoli Beach. Family-friendly. Book direct for best rates.",
