@@ -225,7 +225,7 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
                 )}
 
                 <div className="place-content">
-                  <h3>{place.name}</h3>
+                  <h2>{place.name}</h2>
 
                   <div className="place-meta">
                     <span>{place.distance}</span>
@@ -254,7 +254,7 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
 
         {filteredPlaces.length === 0 && (
           <div className="no-results reveal">
-            <h3>No places found</h3>
+            <h2>No places found</h2>
             <p>Try selecting a different category</p>
           </div>
         )}
@@ -486,7 +486,7 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
         }
 
         .place-content { padding: 2rem; }
-        .place-content h3 { font-size: 1.5rem; margin-bottom: 0.75rem; color: #f97316; }
+        .place-content h2 { font-size: 1.5rem; margin-bottom: 0.75rem; color: #f97316; }
         .place-meta { display: flex; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.9rem; color: #94a3b8; }
        .description { color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;}
         .highlights { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
@@ -504,7 +504,7 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
         .place-card:hover .view-more { transform: translateX(5px); }
 
         .no-results { text-align: center; padding: 4rem 2rem; }
-        .no-results h3 { font-size: 2rem; margin-bottom: 0.5rem; color: #f97316; }
+        .no-results h2 { font-size: 2rem; margin-bottom: 0.5rem; color: #f97316; }
         .no-results p  { color: #94a3b8; }
 
         .modal {
