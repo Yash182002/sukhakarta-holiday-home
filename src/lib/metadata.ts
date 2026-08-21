@@ -28,7 +28,7 @@ export function buildMetadata({
 }): Metadata {
   const url      = `${BASE_URL}${path}`
   const imageUrl = image.startsWith('http') ? image : `${BASE_URL}${image}`
-  const fullTitle = `${title} | ${SITE_NAME}`
+  const fullTitle = title
 
   return {
     title: fullTitle,
