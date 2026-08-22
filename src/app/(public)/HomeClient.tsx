@@ -142,6 +142,13 @@ function getResponsiveSrcSet(url: string): string {
   ].join(", ");
 }
 
+// Tiny, heavily-compressed version used ONLY for blurred backdrop layers.
+// These are rendered with a 16-20px CSS blur, so a 32px-wide source is
+// visually identical to using the full-res original but a fraction of the KBs.
+function getBlurUrl(url: string): string {
+  return getOptimizedImageUrl(url, 32, 20);
+}
+
 /* ─────────────────────────── PROPS ─────────────────────────── */
 interface HomeClientProps {
   rooms: Room[];
@@ -183,7 +190,7 @@ const GalleryThumbnail = memo(({
   const handleClick = useCallback(() => onClick(index), [index, onClick]);
   return (
     <div className={`gallery-thumb ${isActive ? "active" : ""}`} onClick={handleClick}>
-      <div className="thumb-bg" style={{ backgroundImage: `url(${image})` }} aria-hidden="true" />
+      <div className="thumb-bg" style={{ backgroundImage: `url(${getBlurUrl(image)})` }} aria-hidden="true" />
       <Image src={image} alt={`${roomName} ${index + 1}`} fill sizes="72px"
         style={{ objectFit: "contain", zIndex: 1 }} loading="lazy" />
     </div>
@@ -216,10 +223,12 @@ const RoomCard = memo(({
       style={{ "--delay": `${index * 80}ms` } as React.CSSProperties}
     >
       <div className="card-image-wrap">
-        {/* Blurred background — fills dead space for portrait images */}
+        {/* Blurred background — fills dead space for portrait images. Uses a tiny
+            32px source since it's blurred anyway; saves large amounts of KB vs. the
+            original full-resolution photo. */}
         <div
           className="card-img-bg"
-          style={{ backgroundImage: `url(${room.images[0]})` }}
+          style={{ backgroundImage: `url(${getBlurUrl(room.images[0])})` }}
           aria-hidden="true"
         />
         <Image
@@ -349,10 +358,35 @@ function useHeroSlideshow(images: string[]) {
   };
 }
 
+// Only the first hero slide is mounted (and downloaded) immediately.
+// The remaining slides mount during idle time (or after a short fallback
+// delay), well before autoplay would ever need them. This stops every
+// hero photo from fighting the LCP image for bandwidth on first load.
+function useDeferredSlideMount(count: number) {
+  const [mounted, setMounted] = useState<Set<number>>(() => new Set([0]));
+
+  useEffect(() => {
+    if (count <= 1) return;
+
+    const mountRest = () => {
+      setMounted(new Set(Array.from({ length: count }, (_, i) => i)));
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = (window as any).requestIdleCallback(mountRest, { timeout: 3000 });
+      return () => (window as any).cancelIdleCallback?.(id);
+    }
+    const id = setTimeout(mountRest, 1200);
+    return () => clearTimeout(id);
+  }, [count]);
+
+  return mounted;
+}
+
 function HeroSlideBackground({
-  images, activeIndex, onMouseEnter, onMouseLeave, onTouchStart, onTouchEnd,
+  images, activeIndex, mountedIndices, onMouseEnter, onMouseLeave, onTouchStart, onTouchEnd,
 }: {
-  images: string[]; activeIndex: number;
+  images: string[]; activeIndex: number; mountedIndices: Set<number>;
   onMouseEnter: () => void; onMouseLeave: () => void;
   onTouchStart: (e: React.TouchEvent) => void; onTouchEnd: (e: React.TouchEvent) => void;
 }) {
@@ -367,15 +401,19 @@ function HeroSlideBackground({
     >
       {images.map((img, i) => (
         <div key={img + i} className={`hero-slide ${i === activeIndex ? "active" : ""}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={img}
-            alt={`Sukhakarta Holiday Home Alibag — beachfront view ${i + 1}`}
-            className="hero-slide-img"
-            fetchPriority={i === 0 ? "high" : "low"}
-            loading={i === 0 ? "eager" : "lazy"}
-            decoding="async" width={1920} height={1080}
-          />
+          {mountedIndices.has(i) && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={getOptimizedImageUrl(img, 1920, i === 0 ? 65 : 55)}
+              srcSet={getResponsiveSrcSet(img)}
+              sizes="100vw"
+              alt={`Sukhakarta Holiday Home Alibag — beachfront view ${i + 1}`}
+              className="hero-slide-img"
+              fetchPriority={i === 0 ? "high" : "low"}
+              loading={i === 0 ? "eager" : "lazy"}
+              decoding="async" width={1920} height={1080}
+            />
+          )}
         </div>
       ))}
       <div className="hero-img-overlay" />
@@ -481,18 +519,40 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
     if (!error && data) setContent(data);
   }, []);
 
+  // The rooms/content we render on first paint already came from the server
+  // (initialRooms / initialContent), so re-fetching them immediately on mount
+  // plus opening two realtime websocket channels is pure extra main-thread
+  // work competing with the critical rendering path. Defer it to idle time
+  // (or a short fallback delay) instead — content still stays live, it just
+  // doesn't compete with LCP/TBT during the initial load.
   useEffect(() => {
-    fetchRooms();
-    fetchContent();
-    channelRef.current = supabase
-      .channel("home-rooms-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, fetchRooms)
-      .subscribe();
-    contentChannelRef.current = supabase
-      .channel("home-content-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "homepage_content" }, fetchContent)
-      .subscribe();
+    let idleId: number | ReturnType<typeof setTimeout>;
+
+    const setup = () => {
+      fetchRooms();
+      fetchContent();
+      channelRef.current = supabase
+        .channel("home-rooms-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, fetchRooms)
+        .subscribe();
+      contentChannelRef.current = supabase
+        .channel("home-content-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "homepage_content" }, fetchContent)
+        .subscribe();
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      idleId = (window as any).requestIdleCallback(setup, { timeout: 2000 });
+    } else {
+      idleId = setTimeout(setup, 800);
+    }
+
     return () => {
+      if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
+        (window as any).cancelIdleCallback?.(idleId);
+      } else {
+        clearTimeout(idleId as ReturnType<typeof setTimeout>);
+      }
       if (channelRef.current) supabase.removeChannel(channelRef.current);
       if (contentChannelRef.current) supabase.removeChannel(contentChannelRef.current);
       if (observerRef.current) observerRef.current.disconnect();
@@ -507,11 +567,12 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
   }, [rooms, content, setupObserver]);
 
   const hero = getSection(content, "hero") ?? (DEFAULT_HERO as ContentSection);
-const heroImages = hero.images && hero.images.length > 0
-  ? hero.images
-  : hero.image_url ? [hero.image_url] : [];
-const heroSlide = useHeroSlideshow(heroImages);
-const featuresSection = getSection(content, "features");
+  const heroImages = hero.images && hero.images.length > 0
+    ? hero.images
+    : hero.image_url ? [hero.image_url] : [];
+  const heroSlide = useHeroSlideshow(heroImages);
+  const mountedSlides = useDeferredSlideMount(heroImages.length);
+  const featuresSection = getSection(content, "features");
   const features = featuresSection?.features?.length ? featuresSection.features : DEFAULT_FEATURES!;
   const ctaSection = getSection(content, "cta") ?? (DEFAULT_CTA as ContentSection);
   const roomsSection = getSection(content, "rooms");
@@ -554,12 +615,28 @@ const featuresSection = getSection(content, "features");
         <div className="grid-overlay" />
       </div>
 
+      {/* Real preload hint for the LCP hero image. React/Next will hoist this
+          into <head> on modern versions; even rendered in-body it's still
+          picked up by the browser's preload scanner while parsing the
+          server-rendered HTML. */}
+      {heroImages.length > 0 && (
+        <link
+          rel="preload"
+          as="image"
+          href={getOptimizedImageUrl(heroImages[0], 1920, 65)}
+          imageSrcSet={getResponsiveSrcSet(heroImages[0])}
+          imageSizes="100vw"
+          fetchPriority="high"
+        />
+      )}
+
       {/* ══════════ HERO ══════════ */}
       <section className="hero">
   {heroImages.length > 0 ? (
     <HeroSlideBackground
       images={heroImages}
       activeIndex={heroSlide.activeIndex}
+      mountedIndices={mountedSlides}
       onMouseEnter={heroSlide.onMouseEnter}
       onMouseLeave={heroSlide.onMouseLeave}
       onTouchStart={heroSlide.handleTouchStart}
@@ -669,10 +746,10 @@ const featuresSection = getSection(content, "features");
 
             <div className="sheet-gallery">
               <div className="gallery-main">
-                {/* Blurred background for portrait images in modal */}
+                {/* Blurred background for portrait images in modal — tiny source, same as room cards */}
                 <div
                   className="gallery-img-bg"
-                  style={{ backgroundImage: `url(${selectedRoom.images[activeImageIndex]})` }}
+                  style={{ backgroundImage: `url(${getBlurUrl(selectedRoom.images[activeImageIndex])})` }}
                   aria-hidden="true"
                 />
                 <Image
