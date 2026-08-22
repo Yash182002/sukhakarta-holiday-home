@@ -38,7 +38,6 @@ function isValidHttpUrl(url: string): boolean {
 export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[] }) {
   const [activeFilter, setActiveFilter] = useState("all");
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
-  // Seed from SSR — no spinner on first paint
   const [places, setPlaces] = useState<Place[]>(initialPlaces);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -80,7 +79,6 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
     };
   }, []);
 
-  // Realtime refresh — no spinner, only updates after initial paint
   const loadPlaces = useCallback(
     async (signal?: AbortSignal) => {
       try {
@@ -164,13 +162,13 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
           <div className="hero-badge reveal">✦ Explore Alibag ✦</div>
           <h1 className="hero-title">Places to Visit in Alibag</h1>
           <p className="hero-subtitle">
-           Discover the best places to visit in Alibag and nearby areas, including beaches, historic forts, temples, nature attractions and adventure activities. Find approximate distances and travel times from Sukhakarta Holiday Home to plan your trip.
+            Discover the best places to visit in Alibag and nearby areas, including beaches, historic forts, temples, nature attractions and adventure activities. Find approximate distances and travel times from Sukhakarta Holiday Home to plan your trip.
           </p>
-           <section   className="hero-intro reveal" style={{ '--delay': '0.45s' } as React.CSSProperties}>
-      <p>
-        Sukhakarta Holiday Home sits in Kurul village, just minutes from Alibag's most iconic beaches and historical forts. Whether you're planning a morning walk along Varsoli Beach, a low-tide trek to Kolaba Fort, or a day trip to Murud-Janjira, every major attraction is within easy reach. Use this guide to plan your itinerary from our doorstep.
-      </p>
-    </section>
+          <section className="hero-intro reveal" style={{ '--delay': '0.45s' } as React.CSSProperties}>
+            <p>
+              Sukhakarta Holiday Home sits in Kurul village, just minutes from Alibag's most iconic beaches and historical forts. Whether you're planning a morning walk along Varsoli Beach, a low-tide trek to Kolaba Fort, or a day trip to Murud-Janjira, every major attraction is within easy reach. Use this guide to plan your itinerary from our doorstep.
+            </p>
+          </section>
         </div>
       </div>
 
@@ -225,7 +223,8 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
                 )}
 
                 <div className="place-content">
-                  <h2>{place.name}</h2>
+                  {/* ✅ FIX 1: h2 → h3 for correct heading hierarchy (H1 > H3) */}
+                  <h3>{place.name}</h3>
 
                   <div className="place-meta">
                     <span>{place.distance}</span>
@@ -254,7 +253,8 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
 
         {filteredPlaces.length === 0 && (
           <div className="no-results reveal">
-            <h2>No places found</h2>
+            {/* ✅ FIX 2: h2 → h3 for no-results heading */}
+            <h3>No places found</h3>
             <p>Try selecting a different category</p>
           </div>
         )}
@@ -317,6 +317,7 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
             )}
 
             <div className="modal-details">
+              {/* Modal h2 is fine — it's inside a dialog, not the page outline */}
               <h2>{selectedPlace.name}</h2>
 
               <div className="modal-meta">
@@ -486,9 +487,10 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
         }
 
         .place-content { padding: 2rem; }
-        .place-content h2 { font-size: 1.5rem; margin-bottom: 0.75rem; color: #f97316; }
+        /* ✅ FIX 1: updated selector from h2 → h3 */
+        .place-content h3 { font-size: 1.5rem; margin-bottom: 0.75rem; color: #f97316; }
         .place-meta { display: flex; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.9rem; color: #94a3b8; }
-       .description { color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;}
+        .description { color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;}
         .highlights { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
         .highlight-tag {
           padding: 0.25rem 0.75rem; background: rgba(249,115,22,0.1);
@@ -504,7 +506,8 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
         .place-card:hover .view-more { transform: translateX(5px); }
 
         .no-results { text-align: center; padding: 4rem 2rem; }
-        .no-results h2 { font-size: 2rem; margin-bottom: 0.5rem; color: #f97316; }
+        /* ✅ FIX 2: updated selector from h2 → h3 */
+        .no-results h3 { font-size: 2rem; margin-bottom: 0.5rem; color: #f97316; }
         .no-results p  { color: #94a3b8; }
 
         .modal {
@@ -614,17 +617,16 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
           .gallery-main { height: 250px; }
         }
 
-                .hero-intro {
-            max-width: 860px;
-            margin: 0 auto;
-            color: rgba(240, 244, 248, 0.55);
-            font-size: 1.05rem;
-            line-height: 1.9;
-            font-weight: 300;
-            border-top: 1px solid rgba(249, 115, 22, 0.2);
-            padding-top: 1.5rem;
-            margin-top: 1.5rem;
-          }
+        .hero-intro {
+          max-width: 860px;
+          margin: 1.5rem auto 0;
+          color: rgba(240, 244, 248, 0.55);
+          font-size: 1.05rem;
+          line-height: 1.9;
+          font-weight: 300;
+          border-top: 1px solid rgba(249, 115, 22, 0.2);
+          padding-top: 1.5rem;
+        }
       `}</style>
     </div>
   );
