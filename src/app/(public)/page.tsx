@@ -6,11 +6,12 @@ import { PAGE_METADATA } from "@/lib/metadata";
 import type { Metadata } from 'next';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY 
+  ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const metadata: Metadata = PAGE_METADATA.home;
 
-export const revalidate = 0;
+export const revalidate = 300;
 
 export default async function HomePage() {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
