@@ -14,7 +14,7 @@ export const metadata: Metadata = PAGE_METADATA.home;
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+ const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     const [roomsResult, contentResult] = await Promise.all([
