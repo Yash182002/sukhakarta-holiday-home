@@ -19,8 +19,13 @@ export default async function HomePage() {
   try {
     const [roomsResult, contentResult] = await Promise.all([
       supabase
+        // `size` and `view` are selected here too. Without them the
+        // server-rendered HTML showed "Not specified" / "Standard View" (the
+        // fallbacks in mapRoom), and the client-side refresh — which does
+        // select them — swapped in the real values afterwards. That was a
+        // visible content flip and a layout shift charged to CLS.
         .from("rooms")
-        .select("id, name, base_price, max_guests, description, images, amenities")
+        .select("id, name, base_price, max_guests, description, images, amenities, size, view")
         .order("created_at", { ascending: true }),
       supabase
         .from("homepage_content")
