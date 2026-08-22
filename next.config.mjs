@@ -24,6 +24,11 @@ const nextConfig = {
     ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31_536_000,
+    // Next 16 rejects any `quality` prop not listed here with a 400
+    // ('"q" parameter (quality) of 65 is not allowed'); the default allow-list
+    // is [75]. The hero slideshow asks for 65 on the LCP slide and 50 on the
+    // crossfade slides behind it, so both have to be declared.
+    qualities: [50, 65, 75],
     // Limit image dimensions to prevent resource exhaustion
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],

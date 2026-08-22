@@ -1,7 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Cormorant_Garamond, Outfit } from "next/font/google";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { Cormorant_Garamond, Outfit } from "next/font/google";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://sukhakartaholidayhome.in"),
@@ -30,18 +29,12 @@ export const metadata: Metadata = {
   },
 };
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
-
+// Only two families are actually referenced by the stylesheets
+// (--font-outfit for body copy, --font-cormorant for headings). Geist and
+// Geist_Mono used to be declared here too; next/font emitted a
+// <link rel="preload"> for each of them, so every visit fetched two font
+// files that no selector ever used — bandwidth taken directly from the hero
+// LCP image on the same connection.
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
   subsets: ["latin"],
@@ -64,6 +57,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* dns-prefetch only, deliberately NOT preconnect. The hero LCP image
+            used to be fetched straight from Supabase by the browser, so warming
+            DNS+TCP+TLS up front was worth it. It now goes through next/image,
+            which makes it a same-origin /_next/image request and moves the
+            Supabase fetch server-side. The only thing the browser still pulls
+            from this host is the 32px blurred backdrops behind the room cards,
+            all below the fold — and a preconnect would hold open a socket and
+            run a TLS handshake in competition with the LCP request it no longer
+            helps. dns-prefetch keeps the cheap part and drops the costly part. */}
         <link rel="dns-prefetch" href="https://lzyigqadbokousphuxnx.supabase.co" />
         {/* RealFaviconGenerator Favicon Links */}
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
@@ -72,12 +74,17 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${cormorant.variable} ${outfit.variable} antialiased`}
-      >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+      <body className={`${cormorant.variable} ${outfit.variable} antialiased`}>
+        {/* NOTE: AuthProvider deliberately does NOT live here. It statically
+            imports @/lib/supabaseClient, which pulls the whole supabase-js
+            bundle (auth + realtime + postgrest + storage — a single ~186 KB
+            chunk containing GoTrueClient and RealtimeClient) into the entry
+            chunk of every route. That included the homepage, which never reads
+            auth state, and it silently defeated the dynamic import() that
+            HomeClient uses to keep the same library off its critical path.
+            It is now mounted only on the routes that call useAuth():
+            /book and /user/*. */}
+        {children}
       </body>
     </html>
   );

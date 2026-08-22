@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState, useCallback, useRef, memo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, memo } from "react";
 // NOTE: supabase-js (including its realtime/websocket layer) is loaded via
 // dynamic import() further down, only once the visitor actually interacts
 // with the page. A static top-level import here would force the whole
@@ -138,15 +138,11 @@ function getOptimizedImageUrl(url: string, width: number, quality: number = 75):
   } catch { return url; }
 }
 
-function getResponsiveSrcSet(url: string): string {
-  if (!url) return "";
-  return [
-    `${getOptimizedImageUrl(url, 400, 70)} 400w`,
-    `${getOptimizedImageUrl(url, 800, 65)} 800w`,
-    `${getOptimizedImageUrl(url, 1200, 60)} 1200w`,
-    `${getOptimizedImageUrl(url, 1920, 55)} 1920w`,
-  ].join(", ");
-}
+// NOTE: there used to be a getResponsiveSrcSet() here that hand-built a 4-entry
+// srcSet of Supabase render URLs for the hero. The hero now goes through
+// next/image, which generates its own srcSet from `deviceSizes`, so it was dead
+// code. getOptimizedImageUrl above is still used — but only by getBlurUrl, for
+// backdrops painted as CSS background-image, which next/image cannot serve.
 
 // Tiny, heavily-compressed version used ONLY for blurred backdrop layers.
 // These are rendered with a 16-20px CSS blur, so a 32px-wide source is
@@ -241,7 +237,12 @@ const RoomCard = memo(({
           src={room.images[0]} alt={room.name} fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
           style={{ objectFit: "contain", zIndex: 1 }}
-          priority={index < 2} loading={index < 2 ? "eager" : "lazy"}
+          // No priority/eager here. The rooms grid sits below a 100svh hero
+          // and a full features section, so it is never in the initial
+          // viewport — but priority emits fetchpriority="high" plus a <head>
+          // preload, which made the first two room photos compete with the
+          // hero image (the actual LCP element) for the same connection.
+          loading="lazy"
         />
         <div className="card-image-overlay" />
         {room.images.length > 1 && (
@@ -311,31 +312,41 @@ function useHeroSlideshow(images: string[]) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(!reducedMotion.current && images.length > 1);
   const [isHovering, setIsHovering] = useState(false);
-  const [progress, setProgress] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   const goTo = useCallback((idx: number) => {
     setActiveIndex(((idx % images.length) + images.length) % images.length);
-    setProgress(0);
   }, [images.length]);
 
-  const next = useCallback(() => goTo(activeIndex + 1), [activeIndex, goTo]);
-  const prev = useCallback(() => goTo(activeIndex - 1), [activeIndex, goTo]);
+  const next = useCallback(
+    () => setActiveIndex((i) => (i + 1) % images.length),
+    [images.length]
+  );
+  const prev = useCallback(
+    () => setActiveIndex((i) => (i - 1 + images.length) % images.length),
+    [images.length]
+  );
 
+  // One timer per slide, instead of the 40ms ticker this used to run.
+  //
+  // The old version kept a `progress` number in state and called setProgress
+  // every 40ms (25 times a second) purely to drive the width of the progress
+  // bar. That state lives in HomeClient, so every single tick re-rendered the
+  // whole page: all four feature cards, every RoomCard, and the hero slide
+  // list. RoomCard is memo()'d, but the call site passed mapRoom(room) — a
+  // freshly allocated object on each render — so the memo comparison failed
+  // every time and the cards re-rendered anyway. On a throttled mobile CPU
+  // that is a continuous main-thread cost for the entire time the page is
+  // open, and it lands squarely in Total Blocking Time.
+  //
+  // The bar is a pure CSS animation now (see .hero-progress-fill), so React
+  // only has to do work once per slide change.
   useEffect(() => {
     if (images.length <= 1 || !isPlaying || isHovering) return;
-    const stepMs = 40;
-    const id = setInterval(() => {
-      setProgress((p) => {
-        const advanced = p + stepMs / HERO_SLIDE_MS;
-        if (advanced >= 1) {
-          setActiveIndex((i) => (i + 1) % images.length);
-          return 0;
-        }
-        return advanced;
-      });
-    }, stepMs);
-    return () => clearInterval(id);
+    const id = setTimeout(() => {
+      setActiveIndex((i) => (i + 1) % images.length);
+    }, HERO_SLIDE_MS);
+    return () => clearTimeout(id);
   }, [images.length, isPlaying, isHovering, activeIndex]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -356,7 +367,7 @@ function useHeroSlideshow(images: string[]) {
   const togglePlay = useCallback(() => setIsPlaying((p) => !p), []);
 
   return {
-    activeIndex, isPlaying, progress,
+    activeIndex, isPlaying, isHovering,
     goTo, next, prev, togglePlay,
     handleTouchStart, handleTouchEnd, handleKeyDown,
     onMouseEnter: () => setIsHovering(true),
@@ -421,16 +432,32 @@ function HeroSlideBackground({
       {images.map((img, i) => (
         <div key={img + i} className={`hero-slide ${i === activeIndex ? "active" : ""}`}>
           {mountedIndices.has(i) && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={getOptimizedImageUrl(img, 1920, i === 0 ? 65 : 45)}
-              srcSet={getResponsiveSrcSet(img)}
-              sizes="100vw"
+            // Routed through next/image rather than a hand-rolled <img> pointed
+            // at Supabase's /render/image endpoint. Supabase served these with
+            // Cache-Control: max-age=3600 and no AVIF, and measured 590-950ms
+            // TTFB even on a Cloudflare cache HIT — on the LCP critical path.
+            // Going through /_next/image makes the request same-origin (no
+            // second DNS+TLS handshake), lets the AVIF/WebP negotiation in
+            // next.config.mjs apply, and picks up minimumCacheTTL of 1 year on
+            // Vercel's edge instead of 1 hour.
+            <Image
+              src={img}
               alt={`Sukhakarta Holiday Home Alibag — beachfront view ${i + 1}`}
+              // `fill` instead of width/height: .hero-slide is position:absolute
+              // inset:0, and object-fit/object-position come from
+              // .hero-slide-img, which also carries the Ken Burns animation.
+              fill
+              sizes="100vw"
+              quality={i === 0 ? 65 : 50}
               className="hero-slide-img"
-              fetchPriority={i === 0 ? "high" : "low"}
-              loading={i === 0 ? "eager" : "lazy"}
-              decoding="async" width={1920} height={1080}
+              // Mutually exclusive: `priority` already implies eager loading and
+              // emits the <head> preload, and next/image throws if it and
+              // `loading` are both passed. Only slide 0 is the LCP candidate.
+              // fetchPriority has to be spelled out — in Next 16 it is a plain
+              // pass-through prop that `priority` no longer sets for you.
+              {...(i === 0
+                ? { priority: true, fetchPriority: "high" as const }
+                : { loading: "lazy" as const, fetchPriority: "low" as const })}
             />
           )}
         </div>
@@ -441,9 +468,9 @@ function HeroSlideBackground({
 }
 
 function HeroControls({
-  count, activeIndex, progress, isPlaying, onGoTo, onPrev, onNext, onTogglePlay, onKeyDown,
+  count, activeIndex, isPlaying, isHovering, onGoTo, onPrev, onNext, onTogglePlay, onKeyDown,
 }: {
-  count: number; activeIndex: number; progress: number; isPlaying: boolean;
+  count: number; activeIndex: number; isPlaying: boolean; isHovering: boolean;
   onGoTo: (i: number) => void; onPrev: () => void; onNext: () => void;
   onTogglePlay: () => void; onKeyDown: (e: React.KeyboardEvent) => void;
 }) {
@@ -464,9 +491,21 @@ function HeroControls({
             aria-label={`Go to slide ${i + 1} of ${count}`}
             aria-current={i === activeIndex}
           >
+            {/* The fill is animated by CSS rather than by a per-frame React
+                state update. `key={activeIndex}` remounts the span when the
+                slide changes, which is what restarts the animation from 0. */}
             <span
+              key={activeIndex}
               className="hero-progress-fill"
-              style={i === activeIndex ? { transform: `scaleX(${progress})` } : undefined}
+              style={
+                i === activeIndex
+                  ? {
+                      animationName: "heroProgressGrow",
+                      animationDuration: `${HERO_SLIDE_MS}ms`,
+                      animationPlayState: isPlaying && !isHovering ? "running" : "paused",
+                    }
+                  : undefined
+              }
             />
           </button>
         ))}
@@ -616,6 +655,11 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
   const ctaSection = getSection(content, "cta") ?? (DEFAULT_CTA as ContentSection);
   const roomsSection = getSection(content, "rooms");
 
+  // mapRoom() allocates a new object per call, which defeats RoomCard's memo()
+  // if it runs during render. Mapping once per `rooms` change keeps the object
+  // identities stable, so the cards only re-render when the data really moves.
+  const mappedRooms = useMemo(() => rooms.map(mapRoom), [rooms]);
+
   const openRoomDetails = useCallback((room: MappedRoom) => {
     setSelectedRoom(room); setActiveImageIndex(0);
     document.body.style.overflow = "hidden";
@@ -654,20 +698,12 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
         <div className="grid-overlay" />
       </div>
 
-      {/* Real preload hint for the LCP hero image. React/Next will hoist this
-          into <head> on modern versions; even rendered in-body it's still
-          picked up by the browser's preload scanner while parsing the
-          server-rendered HTML. */}
-      {heroImages.length > 0 && (
-        <link
-          rel="preload"
-          as="image"
-          href={getOptimizedImageUrl(heroImages[0], 1920, 65)}
-          imageSrcSet={getResponsiveSrcSet(heroImages[0])}
-          imageSizes="100vw"
-          fetchPriority="high"
-        />
-      )}
+      {/* NOTE: no hand-written <link rel="preload"> for the hero any more. It
+          pointed at a Supabase /render/image URL, and now that slide 0 is a
+          next/image with `priority` — which emits its own preload, with the
+          matching imagesrcset, for the /_next/image URL actually requested —
+          keeping the old one would have preloaded a second copy of the hero
+          from a second origin that nothing ever consumed. */}
 
       {/* ══════════ HERO ══════════ */}
       <section className="hero">
@@ -705,8 +741,8 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
       <HeroControls
         count={heroImages.length}
         activeIndex={heroSlide.activeIndex}
-        progress={heroSlide.progress}
         isPlaying={heroSlide.isPlaying}
+        isHovering={heroSlide.isHovering}
         onGoTo={heroSlide.goTo}
         onPrev={heroSlide.prev}
         onNext={heroSlide.next}
@@ -749,8 +785,8 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
             <p className="section-subtitle">{roomsSection?.subtitle || "Choose your perfect coastal retreat"}</p>
           </div>
           <div className="rooms-grid">
-            {rooms.map((room, idx) => (
-              <RoomCard key={room.id} room={mapRoom(room)} index={idx} onOpenDetails={openRoomDetails} />
+            {mappedRooms.map((room, idx) => (
+              <RoomCard key={room.id} room={room} index={idx} onOpenDetails={openRoomDetails} />
             ))}
           </div>
         </div>
@@ -990,8 +1026,16 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
       .hero-nav:hover { background: rgba(249,115,22,0.5); border-color: rgba(249,115,22,0.7); transform: scale(1.08); }
       .hero-progress-track { display: flex; gap: 6px; align-items: center; }
       .hero-progress-seg { position: relative; width: 34px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.18); border: none; padding: 0; cursor: pointer; overflow: hidden; }
-      .hero-progress-fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, #f97316, #fbbf24); border-radius: 3px; }
+      .hero-progress-fill { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: linear-gradient(90deg, #f97316, #fbbf24); border-radius: 3px; animation-timing-function: linear; animation-fill-mode: forwards; }
+      /* Drives the active segment's fill. Replaces a setProgress() call that
+         used to fire every 40ms and re-render the whole page; animation-name
+         and duration are attached inline from HERO_SLIDE_MS so the two can't
+         drift apart. Runs on the compositor, off the main thread. */
+      @keyframes heroProgressGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
       .hero-progress-seg.done .hero-progress-fill { transform: scaleX(1); }
+      @media (prefers-reduced-motion: reduce) {
+        .hero-progress-fill { animation: none !important; }
+      }
       .hero-playpause { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #f8fafc; cursor: pointer; flex-shrink: 0; margin-left: 0.2rem; transition: background 0.2s ease, border-color 0.2s ease; }
       .hero-playpause:hover { background: rgba(249,115,22,0.35); border-color: rgba(249,115,22,0.6); }
       @media (max-width: 480px) {
