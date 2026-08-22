@@ -359,26 +359,39 @@ function useHeroSlideshow(images: string[]) {
 }
 
 // Only the first hero slide is mounted (and downloaded) immediately.
-// The remaining slides mount during idle time (or after a short fallback
-// delay), well before autoplay would ever need them. This stops every
-// hero photo from fighting the LCP image for bandwidth on first load.
-function useDeferredSlideMount(count: number) {
-  const [mounted, setMounted] = useState<Set<number>>(() => new Set([0]));
+// Rather than mounting every remaining slide in one batch (which showed up
+// as a single large main-thread task — decoding + laying out several large
+// images at once), we mount them one at a time: whatever is currently
+// active, plus the one slide ahead (and the one behind, so the prev button
+// feels instant too). Each new slide is scheduled as its own small idle
+// task, spreading the work out instead of bursting it.
+function useProgressiveSlideMount(images: string[], activeIndex: number) {
+  const [mounted, setMounted] = useState<Set<number>>(() => new Set(images.length > 0 ? [0] : []));
+  const scheduledRef = useRef<Set<number>>(new Set([0]));
+
+  const scheduleMount = useCallback((index: number) => {
+    if (scheduledRef.current.has(index)) return;
+    scheduledRef.current.add(index);
+    const run = () => {
+      setMounted((prev) => {
+        if (prev.has(index)) return prev;
+        const next = new Set(prev);
+        next.add(index);
+        return next;
+      });
+    };
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(run, { timeout: 4000 });
+    } else {
+      setTimeout(run, 1500);
+    }
+  }, []);
 
   useEffect(() => {
-    if (count <= 1) return;
-
-    const mountRest = () => {
-      setMounted(new Set(Array.from({ length: count }, (_, i) => i)));
-    };
-
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      const id = (window as any).requestIdleCallback(mountRest, { timeout: 3000 });
-      return () => (window as any).cancelIdleCallback?.(id);
-    }
-    const id = setTimeout(mountRest, 1200);
-    return () => clearTimeout(id);
-  }, [count]);
+    if (images.length <= 1) return;
+    scheduleMount((activeIndex + 1) % images.length);
+    scheduleMount((activeIndex - 1 + images.length) % images.length);
+  }, [activeIndex, images.length, scheduleMount]);
 
   return mounted;
 }
@@ -506,17 +519,26 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
     document.querySelectorAll(".reveal").forEach((el) => observerRef.current?.observe(el));
   }, []);
 
+  // Background refreshes almost always return the exact same data the SSR
+  // props already gave us. Setting state unconditionally would trigger a
+  // re-render (and re-run the scroll-reveal observer effect below, which
+  // does a full querySelectorAll + re-observe — a forced reflow) for no
+  // visible change. Skip the update when nothing actually changed.
   const fetchRooms = useCallback(async () => {
     const { data, error } = await supabase
       .from("rooms")
       .select("id, name, base_price, max_guests, description, images, amenities, size, view")
       .order("created_at", { ascending: true });
-    if (!error && data) setRooms(data);
+    if (!error && data) {
+      setRooms((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
+    }
   }, []);
 
   const fetchContent = useCallback(async () => {
     const { data, error } = await supabase.from("homepage_content").select("*").order("section");
-    if (!error && data) setContent(data);
+    if (!error && data) {
+      setContent((prev) => (JSON.stringify(prev) === JSON.stringify(data) ? prev : data));
+    }
   }, []);
 
   // The rooms/content we render on first paint already came from the server
@@ -526,33 +548,61 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
   // (or a short fallback delay) instead — content still stays live, it just
   // doesn't compete with LCP/TBT during the initial load.
   useEffect(() => {
-    let idleId: number | ReturnType<typeof setTimeout>;
+    let idleId1: number | ReturnType<typeof setTimeout> | undefined;
+    let idleId2: number | ReturnType<typeof setTimeout> | undefined;
+    let loadListenerAttached = false;
 
-    const setup = () => {
-      fetchRooms();
-      fetchContent();
-      channelRef.current = supabase
-        .channel("home-rooms-realtime")
-        .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, fetchRooms)
-        .subscribe();
-      contentChannelRef.current = supabase
-        .channel("home-content-realtime")
-        .on("postgres_changes", { event: "*", schema: "public", table: "homepage_content" }, fetchContent)
-        .subscribe();
+    const scheduleIdle = (fn: () => void, timeout: number, fallbackDelay: number) => {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+        return (window as any).requestIdleCallback(fn, { timeout });
+      }
+      return setTimeout(fn, fallbackDelay);
     };
 
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      idleId = (window as any).requestIdleCallback(setup, { timeout: 2000 });
-    } else {
-      idleId = setTimeout(setup, 800);
+    // Two separate idle-scheduled chunks instead of one: the data refresh
+    // (cheap) runs first, the realtime websocket subscriptions (heavier —
+    // two channel opens) run as their own task a beat later. Neither one
+    // alone is big enough to register as a long task on its own.
+    const runSetup = () => {
+      idleId1 = scheduleIdle(() => {
+        fetchRooms();
+        fetchContent();
+      }, 3000, 1000);
+
+      idleId2 = scheduleIdle(() => {
+        channelRef.current = supabase
+          .channel("home-rooms-realtime")
+          .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, fetchRooms)
+          .subscribe();
+        contentChannelRef.current = supabase
+          .channel("home-content-realtime")
+          .on("postgres_changes", { event: "*", schema: "public", table: "homepage_content" }, fetchContent)
+          .subscribe();
+      }, 5000, 2200);
+    };
+
+    // Wait until the page has fully loaded before even queuing this work,
+    // so it lands well outside the window Lighthouse measures for TBT —
+    // realtime updates don't need to start within the first second.
+    if (typeof document !== "undefined" && document.readyState === "complete") {
+      runSetup();
+    } else if (typeof window !== "undefined") {
+      loadListenerAttached = true;
+      window.addEventListener("load", runSetup, { once: true });
     }
 
     return () => {
-      if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
-        (window as any).cancelIdleCallback?.(idleId);
-      } else {
-        clearTimeout(idleId as ReturnType<typeof setTimeout>);
-      }
+      if (loadListenerAttached) window.removeEventListener("load", runSetup);
+      const cancelIdle = (id: number | ReturnType<typeof setTimeout> | undefined) => {
+        if (id === undefined) return;
+        if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
+          (window as any).cancelIdleCallback?.(id);
+        } else {
+          clearTimeout(id as ReturnType<typeof setTimeout>);
+        }
+      };
+      cancelIdle(idleId1);
+      cancelIdle(idleId2);
       if (channelRef.current) supabase.removeChannel(channelRef.current);
       if (contentChannelRef.current) supabase.removeChannel(contentChannelRef.current);
       if (observerRef.current) observerRef.current.disconnect();
@@ -571,7 +621,7 @@ export default function HomeClient({ rooms: initialRooms, initialContent = [] }:
     ? hero.images
     : hero.image_url ? [hero.image_url] : [];
   const heroSlide = useHeroSlideshow(heroImages);
-  const mountedSlides = useDeferredSlideMount(heroImages.length);
+  const mountedSlides = useProgressiveSlideMount(heroImages, heroSlide.activeIndex);
   const featuresSection = getSection(content, "features");
   const features = featuresSection?.features?.length ? featuresSection.features : DEFAULT_FEATURES!;
   const ctaSection = getSection(content, "cta") ?? (DEFAULT_CTA as ContentSection);
