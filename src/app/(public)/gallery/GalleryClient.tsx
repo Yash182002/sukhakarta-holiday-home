@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Image from "next/image";
+// Type-only — erased at build, so it costs nothing in the bundle. The
+// supabase client itself is loaded lazily (see the realtime effect below).
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 type MediaItem = {
   id: string;
@@ -30,16 +33,28 @@ const CATEGORIES = [
 // scroll-reveal animation entirely so they don't block LCP.
 const ABOVE_FOLD_COUNT = 8;
 
-function getSpan(index: number, type: "image" | "video", featured: boolean): string {
+function getSpan(index: number, featured: boolean): string {
   if (featured) return "span-2-2";
   const patterns = ["span-1-2", "span-2-1", "span-1-1", "span-1-1", "span-2-1", "span-1-2"];
   return patterns[index % patterns.length];
 }
 
+// Rendered width of a card per breakpoint, so /_next/image can hand back a
+// right-sized file instead of the 4000px original. The mosaic is 4 columns in
+// a 1500px container (≈360px per column), 3 columns ≤1100px, 2 columns ≤768px,
+// and every span collapses to a single column ≤480px.
+const ONE_COL  = "(max-width: 768px) 50vw, (max-width: 1100px) 33vw, 360px";
+const TWO_COL  = "(max-width: 480px) 50vw, (max-width: 768px) 100vw, (max-width: 1100px) 66vw, 720px";
+const SPAN_SIZES: Record<string, string> = {
+  "span-1-1": ONE_COL,
+  "span-1-2": ONE_COL,
+  "span-2-1": TWO_COL,
+  "span-2-2": TWO_COL,
+};
+
 export default function GalleryClient({ initialItems }: { initialItems: MediaItem[] }) {
   // Seed from SSR — no loading flash on first paint
   const [items, setItems] = useState<MediaItem[]>(initialItems);
-  const [filtered, setFiltered] = useState<MediaItem[]>(initialItems);
   const [activeCategory, setActiveCategory] = useState("all");
   const [lightbox, setLightbox] = useState<MediaItem | null>(null);
   const [lightboxIdx, setLightboxIdx] = useState(0);
@@ -50,54 +65,74 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
   );
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Realtime — reload without showing a spinner
-  async function loadGallery() {
-    const { data, error } = await supabase
-      .from("gallery_items")
-      .select("*")
-      .order("sort_order", { ascending: true });
-    if (!error && data) {
-      setItems(data);
-    }
-  }
-
   useEffect(() => {
-    // Defer the refetch + realtime subscription slightly so it doesn't
-    // compete with the initial paint/LCP measurement window. SSR data
-    // is already on screen, so this is just keeping things fresh.
-    const ric = (window as typeof window & {
+    // @supabase/supabase-js is ~50KB of parse+eval and is only needed to keep
+    // an already-rendered gallery fresh, so it is imported lazily *after* load
+    // and then on idle. That keeps it out of the LCP/TBT window entirely.
+    let channel: RealtimeChannel | null = null;
+    let cancelled = false;
+    let idleId: number | undefined;
+
+    const ric = window as typeof window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
       cancelIdleCallback?: (id: number) => void;
-    });
-
+    };
     const usingIdle = typeof ric.requestIdleCallback === "function";
-    const idleId: number = usingIdle
-      ? ric.requestIdleCallback!(loadGallery, { timeout: 2000 })
-      : setTimeout(loadGallery, 300) as unknown as number;
 
-    const channel = supabase
-      .channel("gallery-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "gallery_items" }, loadGallery)
-      .subscribe();
+    const start = async () => {
+      const { supabase } = await import("@/lib/supabaseClient");
+      if (cancelled) return;
+
+      const loadGallery = async () => {
+        const { data, error } = await supabase
+          .from("gallery_items")
+          .select("*")
+          .order("sort_order", { ascending: true });
+        if (error || !data || cancelled) return;
+        // Returning `prev` unchanged lets React bail out of re-rendering all
+        // 18 cards, which is the common case — SSR already had this data.
+        setItems(prev =>
+          JSON.stringify(prev) === JSON.stringify(data) ? prev : (data as MediaItem[])
+        );
+      };
+
+      await loadGallery();
+      if (cancelled) return;
+
+      channel = supabase
+        .channel("gallery-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "gallery_items" }, loadGallery)
+        .subscribe();
+    };
+
+    const schedule = () => {
+      idleId = usingIdle
+        ? ric.requestIdleCallback!(start, { timeout: 3000 })
+        : (setTimeout(start, 1500) as unknown as number);
+    };
+
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
 
     return () => {
-      supabase.removeChannel(channel);
-      if (usingIdle && typeof ric.cancelIdleCallback === "function") {
-        ric.cancelIdleCallback(idleId);
-      } else {
-        clearTimeout(idleId);
+      cancelled = true;
+      window.removeEventListener("load", schedule);
+      if (idleId !== undefined) {
+        if (usingIdle && typeof ric.cancelIdleCallback === "function") ric.cancelIdleCallback(idleId);
+        else clearTimeout(idleId);
+      }
+      if (channel) {
+        void import("@/lib/supabaseClient").then(({ supabase }) => supabase.removeChannel(channel!));
       }
     };
   }, []);
 
-  // Filter
-  useEffect(() => {
-    if (activeCategory === "all") {
-      setFiltered(items);
-    } else {
-      setFiltered(items.filter(i => i.category === activeCategory));
-    }
-  }, [activeCategory, items]);
+  // Derived, not stored — the old state+effect pair forced a second render of
+  // every card on mount and rebuilt the observer each time.
+  const filtered = useMemo(
+    () => (activeCategory === "all" ? items : items.filter(i => i.category === activeCategory)),
+    [activeCategory, items]
+  );
 
   // Scroll reveal — only for cards past the above-the-fold cutoff
   useEffect(() => {
@@ -245,7 +280,7 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
         ) : (
           <div className="gl-mosaic">
             {filtered.map((item, idx) => {
-              const span = getSpan(idx, item.media_type, item.is_featured);
+              const span = getSpan(idx, item.is_featured);
               const aboveFold = idx < ABOVE_FOLD_COUNT;
               const revealed = revealedSet.has(item.id);
               return (
@@ -263,22 +298,27 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
                       muted
                       loop
                       playsInline
-                      preload={aboveFold ? "metadata" : "none"}
+                      preload={idx === 0 ? "metadata" : "none"}
                       onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
                       onMouseLeave={e => { (e.currentTarget as HTMLVideoElement).pause(); (e.currentTarget as HTMLVideoElement).currentTime = 0; }}
                       poster={item.thumbnail_url}
                     />
                   ) : (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
+                    <Image
                       src={item.media_url}
                       alt={item.title || "Gallery image"}
+                      fill
+                      sizes={SPAN_SIZES[span] ?? ONE_COL}
+                      quality={65}
                       className="gl-media"
-                      loading={aboveFold ? "eager" : "lazy"}
-                      // First card is the LCP candidate — tell the
-                      // browser to fetch it before anything else.
-                      fetchPriority={idx === 0 ? "high" : aboveFold ? "auto" : "low"}
-                      decoding={idx === 0 ? "sync" : "async"}
+                      // Only the first card gets priority. Marking all eight
+                      // above-fold cards eager is what made them fight over
+                      // one connection and pushed LCP past 19s; the rest are
+                      // lazy and the browser still fetches any that are
+                      // actually in the viewport, just at lower priority.
+                      {...(idx === 0
+                        ? { priority: true, fetchPriority: "high" as const }
+                        : { loading: "lazy" as const })}
                     />
                   )}
 
@@ -334,8 +374,16 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
               {lightbox.media_type === "video" ? (
                 <video src={lightbox.media_url} controls autoPlay className="gl-lb-media" />
               ) : (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={lightbox.media_url} alt={lightbox.title || "Sukhakarta Holiday Home Alibag gallery photo"} className="gl-lb-media" />
+                <Image
+                  src={lightbox.media_url}
+                  alt={lightbox.title || "Sukhakarta Holiday Home Alibag gallery photo"}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 1000px"
+                  quality={75}
+                  className="gl-lb-media"
+                  priority
+                  fetchPriority="high"
+                />
               )}
             </div>
 
@@ -360,8 +408,15 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
                       className={`gl-lb-thumb${realIdx === lightboxIdx ? " active" : ""}`}
                       onClick={() => { setLightbox(item); setLightboxIdx(realIdx); }}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.thumbnail_url || item.media_url} alt={item.title || "Gallery thumbnail"} />
+                      {/* 72×52 slot — sizes matches the RoomsClient thumbnail pattern */}
+                      <Image
+                        src={item.thumbnail_url || item.media_url}
+                        alt={item.title || "Gallery thumbnail"}
+                        fill
+                        sizes="72px"
+                        quality={65}
+                        loading="lazy"
+                      />
                       {item.media_type === "video" && <div className="gl-lb-thumb-play">▶</div>}
                     </div>
                   );
@@ -384,7 +439,10 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
           position: relative; overflow-x: hidden;
         }
         .gl-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-        .gl-bg-orb { position: absolute; border-radius: 50%; filter: blur(120px); }
+        /* blur(120px) over a 700px box is a very expensive raster on a
+           mid-range phone, and the gradient already fades to transparent at
+           70% — 40px is enough to kill banding for a fraction of the cost. */
+        .gl-bg-orb { position: absolute; border-radius: 50%; filter: blur(40px); }
         .gl-bg-orb1 { width: 700px; height: 700px; background: radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 70%); top: -200px; right: -200px; animation: orbFloat 14s ease-in-out infinite alternate; }
         .gl-bg-orb2 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(14,165,233,0.12) 0%, transparent 70%); bottom: 0; left: -200px; animation: orbFloat 18s ease-in-out infinite alternate-reverse; }
         @keyframes orbFloat { from { transform: translate(0,0) scale(1); } to { transform: translate(40px,-40px) scale(1.06); } }
@@ -426,10 +484,14 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
         .gl-card:hover { border-color: rgba(249,115,22,0.6); box-shadow: 0 20px 50px rgba(249,115,22,0.22), 0 0 0 1px rgba(249,115,22,0.3); z-index: 2; }
         .gl-card:hover .gl-media { transform: scale(1.07); }
         .gl-card:hover .gl-overlay { opacity: 1; }
-        .gl-card:hover .gl-shimmer { left: 110%; }
+        .gl-card:hover .gl-shimmer { transform: translateX(110%); }
 
-        .gl-media { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); will-change: transform; }
-        .gl-shimmer { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.12) 50%, transparent 65%); left: -110%; transition: left 0.55s ease; pointer-events: none; z-index: 3; }
+        .gl-media { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s cubic-bezier(0.22,1,0.36,1); }
+        /* Sweeps with transform, not \`left\` — animating \`left\` relayouts the
+           card on every frame and is what tripped the non-composited-animation
+           audit. Also dropped \`will-change: transform\` from .gl-media: it
+           forced a compositor layer for all 18 images up front. */
+        .gl-shimmer { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.12) 50%, transparent 65%); transform: translateX(-110%); transition: transform 0.55s ease; pointer-events: none; z-index: 3; }
         .gl-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(4,7,15,0.92) 0%, rgba(4,7,15,0.35) 55%, transparent 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 1.25rem; opacity: 0; transition: opacity 0.35s ease; z-index: 2; }
         .gl-featured-badge { position: absolute; top: 0.85rem; left: 0.85rem; background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; padding: 0.28rem 0.75rem; border-radius: 100px; text-transform: uppercase; }
         .gl-play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 52px; height: 52px; border-radius: 50%; background: rgba(249,115,22,0.9); display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); box-shadow: 0 4px 20px rgba(249,115,22,0.5); }
@@ -454,7 +516,10 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
         .gl-lb-nav:hover { background: #f97316; transform: translateY(-50%) scale(1.1); }
         .gl-lb-prev { left: -1.25rem; }
         .gl-lb-next { right: -1.25rem; }
-        .gl-lb-media-wrap { border-radius: 16px; overflow: hidden; background: #000; max-height: 65vh; display: flex; align-items: center; justify-content: center; }
+        /* Fixed height + position:relative so next/image \`fill\` has a box to
+           fill. Side effect worth having: the frame no longer resizes as you
+           arrow between portrait and landscape shots. */
+        .gl-lb-media-wrap { position: relative; border-radius: 16px; overflow: hidden; background: #000; width: 100%; height: 65vh; display: flex; align-items: center; justify-content: center; }
         .gl-lb-media { max-width: 100%; max-height: 65vh; object-fit: contain; display: block; }
         .gl-lb-info { padding: 1.25rem 0 0.75rem; border-bottom: 1px solid rgba(249,115,22,0.12); }
         .gl-lb-title { font-family: var(--font-cormorant, Georgia, serif); font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg,#fff,#f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0 0 0.4rem; }
