@@ -1,14 +1,50 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Script from "next/script";
 
 declare global {
   interface Window { Razorpay: any; }
+}
+
+/* ─────────────────────────── RAZORPAY LOADER ─────────────────────────── */
+
+// checkout.js used to be injected with next/script strategy="lazyOnload".
+// "Lazy" still meant every single /book view downloaded ~210 KB (checkout.js,
+// its v2 entry chunk and a 26 KB stylesheet, almost all of it unused) and
+// executed it on the main thread, including for the large majority of
+// visitors who never reach the payment step.
+//
+// It is now fetched only once the visitor is actually in the booking funnel:
+// warmed when they click "Check Availability", and awaited when they click
+// "Select & Pay". Warming means the script is normally already parsed by the
+// time it is needed, so the payment click stays instant.
+const RAZORPAY_SRC = "https://checkout.razorpay.com/v1/checkout.js";
+let razorpayPromise: Promise<void> | null = null;
+
+function loadRazorpay(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (window.Razorpay) return Promise.resolve();
+  if (!razorpayPromise) {
+    razorpayPromise = new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src   = RAZORPAY_SRC;
+      script.async = true;
+      script.onload  = () => resolve();
+      script.onerror = () => {
+        // Drop the cached promise so a later attempt can retry instead of
+        // permanently reusing the failed one.
+        razorpayPromise = null;
+        script.remove();
+        reject(new Error("Razorpay checkout failed to load"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return razorpayPromise;
 }
 
 /* ─────────────────────────── TYPES ─────────────────────────── */
@@ -218,43 +254,6 @@ function addMultiRoomCombinations(
   }
 }
 
-/* ─────────────────────────── ROOM OPTION COMPONENT ─────────────────────────── */
-
-const RoomOption = memo(({
-  room, isSelected, onSelect, guestCount,
-}: {
-  room: Room; isSelected: boolean; onSelect: (room: Room) => void; guestCount: number;
-}) => {
-  const handleClick = useCallback(() => onSelect(room), [room, onSelect]);
-  const price = getRoomPrice(room, guestCount);
-  return (
-    <div onClick={handleClick} className={`room-option reveal ${isSelected ? "selected" : ""}`}>
-      {room.images && room.images.length > 0 && (
-        <div className="room-thumbnail">
-          <Image src={room.images[0]} alt={room.name} width={120} height={80}
-            style={{ objectFit: "cover", borderRadius: "8px" }} />
-          {room.images.length > 1 && <span className="image-count-badge">+{room.images.length - 1}</span>}
-        </div>
-      )}
-      <div className="room-info">
-        <h3>{room.name}</h3>
-        {room.description && <p className="room-desc">{room.description.slice(0, 60)}...</p>}
-        <div className="room-details"><span>Max {room.max_guests} Guests</span></div>
-        {room.amenities && room.amenities.length > 0 && (
-          <div className="amenities-mini">
-            {room.amenities.slice(0, 3).map((a, i) => <span key={i} className="amenity-mini">✓ {a}</span>)}
-          </div>
-        )}
-      </div>
-      <div className="room-price">
-        <span className="price">₹{price.toLocaleString()}</span>
-        <span className="price-label">/ night</span>
-      </div>
-    </div>
-  );
-});
-RoomOption.displayName = "RoomOption";
-
 /* ─────────────────────────── MAIN COMPONENT ─────────────────────────── */
 
 export default function BookingPage() {
@@ -269,7 +268,6 @@ export default function BookingPage() {
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
   const checkoutInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -340,32 +338,25 @@ export default function BookingPage() {
     return d.toISOString().split("T")[0];
   }, []);
 
-  const setupObserver = useCallback(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            (entry.target as HTMLElement).style.setProperty("--revealed", "1");
-            entry.target.classList.add("in-view");
-            observerRef.current?.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
-    );
-    document.querySelectorAll(".reveal").forEach((el) => observerRef.current?.observe(el));
-  }, []);
-
-  useEffect(() => {
-    let raf: number;
-    let timeout: ReturnType<typeof setTimeout>;
-    raf = requestAnimationFrame(() => { timeout = setTimeout(setupObserver, 50); });
-    return () => { cancelAnimationFrame(raf); clearTimeout(timeout); };
-  }, [availableRooms, roomSuggestions, setupObserver]);
-
-  // Razorpay is now loaded via next/script with strategy="lazyOnload" below —
-  // it's off the critical path and no longer competes with LCP/TBT.
+  // PERF: this page deliberately has no scroll-reveal machinery.
+  //
+  // The trust bar, reservation form and options panel are all first-screen
+  // content, but they used to carry a `.reveal` class that set `opacity: 0`
+  // in CSS and only cleared it from an IntersectionObserver callback that ran
+  // after React had hydrated. On a mid-range phone over slow 4G that meant
+  // the whole booking form stayed invisible until the client bundle (React +
+  // supabase-js) had downloaded, parsed and hydrated — Largest Contentful
+  // Paint was pinned to hydration at ~6.1 s even though First Contentful
+  // Paint was 1.0 s and the server-rendered HTML had contained the finished
+  // form all along.
+  //
+  // The markup now paints as it arrives, so LCP tracks FCP. The only entrance
+  // animation left is a pure-CSS one on the availability cards, which are
+  // rendered in response to a click and so can never affect load metrics.
+  //
+  // If a scroll reveal is ever wanted here again, animate from a *visible*
+  // resting state — never leave above-the-fold content at opacity 0 waiting
+  // for JS.
 
   useEffect(() => {
     let mounted = true;
@@ -393,10 +384,6 @@ export default function BookingPage() {
     };
     loadBlockedDates();
     return () => { mounted = false; };
-  }, []);
-
-  useEffect(() => {
-    return () => { if (observerRef.current) observerRef.current.disconnect(); };
   }, []);
 
   const nights = useMemo(() => {
@@ -443,6 +430,13 @@ export default function BookingPage() {
       return;
     }
     setMessage(""); setAvailableRooms([]); setSelectedRooms([]); setRoomSuggestions([]); setLoading(true);
+
+    // The visitor is in the booking funnel now, so start fetching the Razorpay
+    // checkout bundle in the background. This is well past LCP and only costs
+    // bandwidth for people who are actually going to pay. Failures are ignored
+    // here — startMultiRoomPayment awaits (and retries) it properly.
+    loadRazorpay().catch(() => {});
+
     try {
       const { data: bookings } = await supabase
         .from("bookings").select("room_id")
@@ -509,6 +503,11 @@ export default function BookingPage() {
   const startMultiRoomPayment = useCallback(async (roomAllocations: RoomAllocation[]) => {
     const totalAmount = roomAllocations.reduce((sum, r) => sum + (r.pricePerNight * nights), 0);
     const bookingGroupId = crypto.randomUUID();
+
+    // Kicked off before the DB writes so the script download overlaps the
+    // booking inserts and the create-order round trip instead of following
+    // them. Normally already resolved from the "Check Availability" warm-up.
+    const razorpayReady = loadRazorpay();
 
     try {
       const bookingPromises = roomAllocations.map(allocation =>
@@ -601,6 +600,7 @@ export default function BookingPage() {
         theme:   { color: "#f97316" },
       };
 
+      await razorpayReady;
       new window.Razorpay(options).open();
     } catch (error) {
       console.error("Payment error:", error);
@@ -635,12 +635,6 @@ export default function BookingPage() {
 
   return (
     <div className="booking-page">
-      {/* Loaded off the critical path — doesn't block LCP/TBT anymore */}
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
-      />
-
       <div className="bg-mesh" aria-hidden="true">
         <div className="mesh-layer-1" />
         <div className="grid-overlay" />
@@ -652,7 +646,7 @@ export default function BookingPage() {
           <h1 className="hero-title">Book Your Stay</h1>
           <p className="hero-subtitle">Create unforgettable memories at Sukhakarta Holiday Home</p>
           {!user && (
-            <div className="login-notice reveal">
+            <div className="login-notice">
               <p>
                 Already have an account?{" "}
                 <a href="/user/login">Login</a> or{" "}
@@ -666,7 +660,7 @@ export default function BookingPage() {
       <div className="container">
 
         {/* ── TRUST BAR ── */}
-        <div className="trust-bar reveal" style={{ "--delay": "0ms" } as React.CSSProperties}>
+        <div className="trust-bar">
           <div className="trust-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -698,7 +692,7 @@ export default function BookingPage() {
         <div className="booking-grid">
 
           {/* ── Form ── */}
-          <div className="form-section reveal">
+          <div className="form-section">
             <h2>Reservation Details</h2>
             <p className="form-subtitle">
               {hasSavedContactInfo ? "Just pick your dates and guest count" : "All fields are mandatory"}
@@ -803,7 +797,7 @@ export default function BookingPage() {
           </div>
 
           {/* ── Options panel ── */}
-          <div className="summary-section reveal" style={{ "--delay": "120ms" } as React.CSSProperties}>
+          <div className="summary-section">
             <h2>Available Options</h2>
 
             {roomSuggestions.length === 0 && !message && (
@@ -828,7 +822,8 @@ export default function BookingPage() {
                   const isAllRoomsPlusHall = combo.length === regularRoomCount + 1 && hasHall;
 
                   return (
-                    <div key={idx} className={`combo-card ${isSelected ? "selected" : ""}`}>
+                    <div key={idx} className={`combo-card ${isSelected ? "selected" : ""}`}
+                      style={{ "--delay": `${Math.min(idx, 5) * 60}ms` } as React.CSSProperties}>
                       <div className="combo-header">
                         <div className="combo-title-row">
                           <strong>Option {idx + 1}</strong>
@@ -939,9 +934,8 @@ export default function BookingPage() {
         .mesh-layer-1 { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 100% 0%, rgba(249,115,22,0.18) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 0% 100%, rgba(14,165,233,0.15) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 50% 50%, rgba(249,115,22,0.06) 0%, transparent 70%), linear-gradient(160deg, #04070f 0%, #0b1220 50%, #04070f 100%); }
         .grid-overlay { position: absolute; inset: 0; background-image: linear-gradient(rgba(249,115,22,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(249,115,22,0.04) 1px, transparent 1px); background-size: 60px 60px; }
 
-        .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.65s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms), transform 0.65s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms); will-change: opacity, transform; contain: layout style; }
-        .reveal.in-view { opacity: 1; transform: translateY(0); }
-        @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; contain: none; } }
+        /* No .reveal rules here by design — see the PERF note in the component.
+           Nothing above the fold is allowed to start at opacity 0. */
 
         .hero { position: relative; z-index: 1; padding: 9rem 1.5rem 4rem; text-align: center; }
         .hero-badge { display: inline-block; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: #f97316; padding: 0.5rem 1.25rem; border: 1px solid rgba(249,115,22,0.4); border-radius: 100px; margin-bottom: 2rem; background: rgba(249,115,22,0.08); animation: fadeInDown 0.7s ease-out both; }
@@ -1021,7 +1015,12 @@ export default function BookingPage() {
 
         .suggestions-list { display: flex; flex-direction: column; gap: 1rem; }
 
-        .combo-card { background: rgba(255,255,255,0.04); border: 2px solid rgba(249,115,22,0.2); border-radius: 16px; padding: 1.25rem; transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), border-color 0.2s ease, box-shadow 0.3s ease; cursor: pointer; }
+        /* Entrance animation for the availability cards. These are only ever
+           rendered after the visitor clicks "Check Availability", so unlike the
+           old scroll-reveal it cannot delay first paint or LCP. */
+        .combo-card { background: rgba(255,255,255,0.04); border: 2px solid rgba(249,115,22,0.2); border-radius: 16px; padding: 1.25rem; transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), border-color 0.2s ease, box-shadow 0.3s ease; cursor: pointer; animation: comboIn 0.45s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms) both; }
+        @keyframes comboIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { .combo-card { animation: none; } }
         .combo-card:hover { transform: translateY(-4px); border-color: rgba(249,115,22,0.5); box-shadow: 0 10px 30px rgba(249,115,22,0.2); }
         .combo-card.selected { border-color: #f97316; background: rgba(249,115,22,0.08); box-shadow: 0 12px 35px rgba(249,115,22,0.3); }
 
