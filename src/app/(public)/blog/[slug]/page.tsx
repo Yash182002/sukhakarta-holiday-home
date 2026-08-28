@@ -88,12 +88,33 @@ function escapeHtml(s: string): string {
 }
 
 /* ─── Simple markdown → HTML renderer (no external deps) ─── */
+/* ─── Simple markdown → HTML renderer (no external deps) ─── */
 function renderMarkdown(md: string): string {
   return escapeHtml(md)
     // headings
     .replace(/^### (.+)$/gm, "<h3>$1</h3>")
     .replace(/^## (.+)$/gm, "<h2>$1</h2>")
     .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    // images — must run before links (similar [] () syntax, leading !)
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1" loading="lazy" />')
+    // markdown links: [text](url)
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, text, url) => {
+      const external = /^https?:\/\//i.test(url);
+      return external
+        ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`
+        : `<a href="${url}">${text}</a>`;
+    })
+    // bare full URLs not already inside an <a> tag
+    .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (m, pre, url) => {
+      // skip if this URL is already the href of a tag we just built
+      return `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    })
+    // bare internal paths mentioned in prose, e.g. /places, /book, /blog/some-post
+    // (avoids matching things already inside href="…" or mid-word like 24/7)
+    .replace(
+      /(^|[\s(])(?!<a )(\/[a-zA-Z][a-zA-Z0-9-]*(?:\/[a-zA-Z0-9-]+)*)(?=[\s.,!?)]|$)/g,
+      (m, pre, path) => `${pre}<a href="${path}">${path}</a>`
+    )
     // bold & italic
     .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
@@ -102,9 +123,10 @@ function renderMarkdown(md: string): string {
     .replace(/`(.+?)`/g, "<code>$1</code>")
     // unordered lists
     .replace(/^\s*[-*] (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
     // ordered lists
     .replace(/^\s*\d+\. (.+)$/gm, "<li>$1</li>")
+    // wrap any run of <li> lines in a list (both bullet & numbered end up here)
+    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
     // blockquotes
     .replace(/^> (.+)$/gm, "<blockquote>$1</blockquote>")
     // horizontal rule
@@ -114,7 +136,7 @@ function renderMarkdown(md: string): string {
     .map((block) => {
       const trimmed = block.trim();
       if (!trimmed) return "";
-      if (/^<(h[1-6]|ul|ol|li|blockquote|hr|pre|code)/.test(trimmed)) return trimmed;
+      if (/^<(h[1-6]|ul|ol|li|blockquote|hr|pre|code|img|a )/.test(trimmed)) return trimmed;
       return `<p>${trimmed.replace(/\n/g, "<br>")}</p>`;
     })
     .join("\n");
