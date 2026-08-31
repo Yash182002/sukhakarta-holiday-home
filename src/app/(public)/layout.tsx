@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: {
-    default: "Sukhakarta Holiday Home | Best Homestay Near Alibag Beach",
+    default: "Best Homestay in Alibag | Sukhakarta Holiday Home",
     template: "%s | Sukhakarta Holiday Home",
   },
   description:
