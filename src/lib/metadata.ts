@@ -80,10 +80,6 @@ export function buildMetadata({
   }
 }
 
-// ── Per-page metadata presets ─────────────────────────────────
-
-export const PAGE_METADATA = {
-
  // ── Per-page metadata presets ─────────────────────────────────
 
 export const PAGE_METADATA = {
