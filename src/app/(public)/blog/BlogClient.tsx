@@ -191,18 +191,17 @@ function CategoryIllustration({ category, coverColor, accentColor, size }: {
 /* ─── Visual cover for non-featured cards only ─── */
 function PostCover({ post, size = "normal" }: { post: BlogPost; size?: "normal" | "small" }) {
   return (
-    <div
-      className={`post-cover post-cover--${size}`}
-      style={{
-        background: `radial-gradient(ellipse at 30% 30%, ${post.accentColor}40 0%, ${post.coverColor}28 40%, rgba(4,7,15,0.85) 100%)`,
-        border: `1px solid ${post.coverColor}25`,
-      }}
-      aria-hidden="true"
-    >
+       <div
+        className={`post-cover post-cover--${size}`}
+        style={{
+          background: `radial-gradient(ellipse at 30% 30%, ${post.accentColor}40 0%, ${post.coverColor}28 40%, rgba(4,7,15,0.85) 100%)`,
+          border: `1px solid ${post.coverColor}25`,
+        }}
+      >
       {post.coverImageUrl && (
         <img
           src={post.coverImageUrl}
-          alt=""
+          alt={post.title}
           className={`cover-photo cover-photo--${size}`}
           loading="lazy"
         />
