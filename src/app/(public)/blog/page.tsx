@@ -4,9 +4,9 @@ import BlogClient from "./BlogClient";
 
 /* ─── SEO Metadata ─── */
 export const metadata: Metadata = {
-  title: "Travel Blog | Alibag Travel Tips, Guides & Things To Do",
+  title: "Alibag Travel Blog, Guides & Tips | Sukhakarta",
   description:
-    "Explore our travel blog for the best Alibag travel guides, things to do, hidden gems, weekend getaway tips from Mumbai, and insider advice from Sukhakarta Holiday Home.",
+    "Discover the best travel guides, beach recommendations, and local insights for your stay in Alibag.",
   keywords: [
     "Alibag travel guide",
     "things to do in Alibag",
