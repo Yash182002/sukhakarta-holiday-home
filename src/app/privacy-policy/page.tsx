@@ -49,7 +49,7 @@ const icons = {
   ),
 };
 
-export default function PrivacyPolicy() {
+export default function PrivacyPolicyContent() {
   return (
     <div className="page-root">
       <Navbar />
@@ -157,7 +157,6 @@ export default function PrivacyPolicy() {
       </div>
       <Footer />
 
-      {/* ── CHANGED: style jsx global so html/body selectors work ── */}
       <style jsx global>{`
         html, body { background: #04070f !important; }
 
