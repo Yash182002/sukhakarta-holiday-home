@@ -4,9 +4,9 @@ import BlogClient from "./BlogClient";
 
 /* ─── SEO Metadata ─── */
 export const metadata: Metadata = {
-  title: "Alibag Travel Blog, Guides & Tips | Sukhakarta",
+  title: "Alibag Travel Blog & Guides",
   description:
-    "Discover the best travel guides, beach recommendations, and local insights for your stay in Alibag.",
+    "Discover local Alibag travel guides, beach recommendations, and insider tips for your Konkan coastal getaway at Sukhakarta Holiday Home.",
   keywords: [
     "Alibag travel guide",
     "things to do in Alibag",
@@ -20,9 +20,9 @@ export const metadata: Metadata = {
     "Konkan travel guide",
   ],
   openGraph: {
-    title: "Travel Blog | Sukhakarta Holiday Home, Alibag",
+    title: "Alibag Travel Blog & Guides | Sukhakarta Holiday Home",
     description:
-      "Discover Alibag through our travel blog. Expert tips, hidden gems, local guides and everything you need to plan the perfect coastal getaway.",
+      "Expert tips, hidden beach gems, and local travel guides for your Alibag coastal trip.",
     url: "https://sukhakartaholidayhome.in/blog",
     siteName: "Sukhakarta Holiday Home",
     locale: "en_IN",
@@ -38,9 +38,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Travel Blog | Sukhakarta Holiday Home, Alibag",
+    title: "Alibag Travel Blog & Guides | Sukhakarta Holiday Home",
     description:
-      "Discover Alibag through our travel blog. Expert tips, hidden gems and local guides.",
+      "Expert tips, hidden beach gems, and local guides for Alibag.",
     images: ["https://sukhakartaholidayhome.in/logo.webp"],
   },
   alternates: {
@@ -48,9 +48,6 @@ export const metadata: Metadata = {
   },
 };
 
-/* ─── Supabase server-side client ─── */
-// Uses the service role key (never exposed to browser) for server-side fetching.
-// Falls back to the anon key if service role is not set.
 function getSupabaseServer() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key =
@@ -59,10 +56,6 @@ function getSupabaseServer() {
   return createClient(url, key);
 }
 
-/* ─── Fetch published posts from Supabase ─── */
-// `revalidate = 60` means Next.js re-fetches from Supabase at most once per
-// minute (ISR). The real-time subscription in BlogClient handles instant
-// updates in the browser without waiting for revalidation.
 export const revalidate = 60;
 
 async function getPublishedPosts() {
@@ -96,7 +89,7 @@ async function getPublishedPosts() {
       { day: "numeric", month: "long", year: "numeric" }
     ),
     featured:      row.featured ?? false,
-    gradient:      "",            // kept for type compat — not used in BlogClient
+    gradient:      "",          
     coverColor:    row.cover_color,
     accentColor:   row.accent_color,
     coverImageUrl: row.cover_image_url ?? null,
