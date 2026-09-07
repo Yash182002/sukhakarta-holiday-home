@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://sukhakartaholidayhome.in"),
   title: {
     default: "Sukhakarta Holiday Home | Alibag Beachfront Stay",
-    template: "%s | Sukhakarta Holiday Home Alibag",
+    template: "%s | Sukhakarta",
   },
   description:
     "Luxury beachfront holiday home in Alibag, Maharashtra. A/C rooms with sea views, 9 minutes from beach, family-friendly. Book direct for best rates.",
