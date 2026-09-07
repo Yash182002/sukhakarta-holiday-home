@@ -1,4 +1,4 @@
-import type { MetadataRoute } from 'next'
+import type { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -16,7 +16,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
       {
-        // Block AI training crawlers (optional but recommended)
+        // Block AI training crawlers
         userAgent: 'GPTBot',
         disallow: '/',
       },
@@ -27,5 +27,5 @@ export default function robots(): MetadataRoute.Robots {
     ],
     sitemap: 'https://sukhakartaholidayhome.in/sitemap.xml',
     host: 'https://sukhakartaholidayhome.in',
-  }
+  };
 }
