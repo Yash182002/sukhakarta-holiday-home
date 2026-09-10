@@ -207,4 +207,25 @@ export const PAGE_METADATA = {
     keywords:    ['cancellation policy sukhakarta holiday home', 'alibag homestay refund policy'],
   }),
 
+    nearAkshiBeach: buildMetadata({
+    title:       'Homestay Near Akshi Beach',
+    description: 'Stay near Akshi Beach, Alibag at Sukhakarta Holiday Home. Clean AC rooms, free WiFi, warm hospitality, close to the beach. From ₹1499/night. Book direct.',
+    path:        '/stay/near-akshi-beach',
+    keywords:    ['akshi beach homestay', 'holiday home near akshi beach'],
+  }),
+
+  nearKihimBeach: buildMetadata({
+    title:       'Homestay Near Kihim Beach',
+    description: 'Looking for a stay near Kihim Beach, Alibag? Sukhakarta Holiday Home offers AC rooms, free parking, and warm hospitality close by. From ₹1499/night. Book direct.',
+    path:        '/stay/near-kihim-beach',
+    keywords:    ['kihim beach homestay', 'holiday home near kihim beach'],
+  }),
+
+  groupStayAlibag: buildMetadata({
+    title:       'Group Stay Homestay in Alibag',
+    description: 'Planning a group trip to Alibag? Sukhakarta Holiday Home has spacious rooms and a family hall for large groups. Free parking, home-cooked meals. Book direct.',
+    path:        '/stay/group-stay-alibag',
+    keywords:    ['group stay alibag', 'large group homestay alibag'],
+  }),
+
 }
