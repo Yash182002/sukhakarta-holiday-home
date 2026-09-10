@@ -43,7 +43,7 @@ export async function generateMetadata(
   const ogImage = post.cover_image_url || "https://sukhakartaholidayhome.in/logo.webp";
 
   return {
-    title: `${post.title} | Sukhakarta Holiday Home Blog`,
+   title: post.title,
     description,
     keywords,
     openGraph: {
