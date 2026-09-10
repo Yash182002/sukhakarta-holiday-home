@@ -20,7 +20,7 @@ const pageData = {
     "Traveling with friends or an extended family group? Sukhakarta Holiday Home has the space and flexibility to host you comfortably.",
   intro:
     "Sukhakarta Holiday Home in Kurul, Alibag is well suited for group trips — with multiple AC rooms plus a spacious family hall that can accommodate up to 8 guests, it's an easy base for friend groups, family reunions, or team getaways.",
-  distance: "10 minutes",
+  distance: "9 minutes",
   distanceLabel: "Drive time to Alibag Beach",
   highlights: [
     { icon: "🛏️", text: "Multiple rooms + family hall for large groups" },
