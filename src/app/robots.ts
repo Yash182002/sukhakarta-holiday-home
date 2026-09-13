@@ -15,15 +15,6 @@ export default function robots(): MetadataRoute.Robots {
           '/book/cancel',
         ],
       },
-      {
-        // Block AI training crawlers
-        userAgent: 'GPTBot',
-        disallow: '/',
-      },
-      {
-        userAgent: 'CCBot',
-        disallow: '/',
-      },
     ],
     sitemap: 'https://sukhakartaholidayhome.in/sitemap.xml',
     host: 'https://sukhakartaholidayhome.in',
