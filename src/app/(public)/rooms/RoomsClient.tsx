@@ -263,22 +263,24 @@ export default function RoomsClient({ initialRooms }: { initialRooms: DBRoom[] }
           </div>
         </section>
 
-        <div className="container">
-          {rooms.length === 0 && (
-            <div className="no-results">
-              <h3>No rooms available</h3>
-              <p>Check back soon for availability.</p>
-            </div>
-          )}
-          {rooms.length > 0 && (
+       <div className="container">
+        {rooms.length === 0 && (
+          <div className="no-results">
+            <h3>No rooms available</h3>
+            <p>Check back soon for availability.</p>
+          </div>
+        )}
+        {rooms.length > 0 && (
+          <>
+            <h2 className="section-heading">Choose Your Room</h2>
             <div className="rooms-grid">
               {rooms.map((room, idx) => (
                 <RoomCard key={room.id} room={room} index={idx} onOpenDetails={openRoomDetails} />
               ))}
             </div>
-          )}
-        </div>
-
+          </>
+        )}
+      </div>
         {selectedRoom && (
           <div className="modal-overlay" onClick={closeRoomDetails}>
             <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
@@ -739,6 +741,14 @@ export default function RoomsClient({ initialRooms }: { initialRooms: DBRoom[] }
           .rooms-grid { grid-template-columns: 1fr; gap: 1rem; }
           .hero { padding: 5.5rem 1rem 2rem; }
           .container { padding: 0 0.875rem 3.5rem; }
+        }
+        .section-heading {
+          font-family: var(--font-cormorant), Georgia, serif;
+          font-size: clamp(1.6rem, 4vw, 2.2rem);
+          font-weight: 700;
+          color: #f8fafc;
+          margin: 0 0 1.5rem;
+          text-align: center;
         }
       `}</style>
     </>
