@@ -270,8 +270,9 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
         </div>
       </div>
 
-      <main className="gl-container">
-        {filtered.length === 0 ? (
+     <main className="gl-container">
+      <h2 className="gl-section-heading">Our Photo & Video Gallery</h2>
+      {filtered.length === 0 ? (
           <div className="gl-empty">
             <div className="gl-empty-icon"></div>
             <h3>Nothing here yet</h3>
@@ -562,6 +563,14 @@ export default function GalleryClient({ initialItems }: { initialItems: MediaIte
           .gl-card, .gl-media, .gl-shimmer, .gl-bg-orb1, .gl-bg-orb2 { animation: none !important; transition: none !important; }
           .gl-card { opacity: 1; transform: none; }
         }
+        .gl-section-heading {
+        font-family: var(--font-cormorant, Georgia, serif);
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 700;
+        color: #f8fafc;
+        margin: 0 0 1.75rem;
+        text-align: center;
+      }
       `}</style>
     </div>
   );
