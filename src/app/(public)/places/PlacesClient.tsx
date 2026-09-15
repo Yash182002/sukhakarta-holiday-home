@@ -237,7 +237,8 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
 
       {/* Filters */}
       <div className="container">
-        <div className="filter-section">
+      <h2 className="section-heading">Top Places to Visit Near Sukhakarta</h2>
+      <div className="filter-section">
           {CATEGORIES.map((cat, i) => (
             <button
               key={cat.id}
@@ -751,7 +752,15 @@ export default function PlacesClient({ initialPlaces }: { initialPlaces: Place[]
           padding-top: 1.5rem;
           animation: fadeInUp 0.8s ease-out 0.45s both;
         }
-        .hero-intro p { margin: 0; }
+        .hero-intro p { margin: 0; 
+        } 
+        .section-heading {
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        font-weight: 700;
+        color: #f8fafc;
+        margin: 0 0 2rem;
+        text-align: center;
+      }
       `}</style>
     </div>
   );
