@@ -554,3 +554,34 @@ export const metadata = buildMetadata({
   path: '/faq',
 })
 `
+// ─────────────────────────────────────────────────────────────
+// 9. GENERIC WEBPAGE SCHEMA — for simple content pages
+// ─────────────────────────────────────────────────────────────
+export function getWebPageSchema(page: {
+  name: string
+  description: string
+  path: string
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `https://sukhakartaholidayhome.in${page.path}#webpage`,
+        "name": page.name,
+        "description": page.description,
+        "url": `https://sukhakartaholidayhome.in${page.path}`,
+        "isPartOf": { "@id": "https://sukhakartaholidayhome.in/#website" },
+        "about": { "@id": "https://sukhakartaholidayhome.in/#business" },
+        "inLanguage": "en-IN"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://sukhakartaholidayhome.in" },
+          { "@type": "ListItem", "position": 2, "name": page.name, "item": `https://sukhakartaholidayhome.in${page.path}` }
+        ]
+      }
+    ]
+  }
+}
