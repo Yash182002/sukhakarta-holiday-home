@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import AboutClient from './AboutClient';
 import { PAGE_METADATA } from '@/lib/metadata';
+import { organizationSchema } from '@/lib/schemas';
+import SchemaScript from '@/components/SchemaScript';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = PAGE_METADATA.about;
@@ -22,10 +24,13 @@ export default async function AboutPage() {
   const find = (section: string) => data?.find((s: any) => s.section === section) ?? null;
 
   return (
-    <AboutClient
-      initialHero={find("hero")}
-      initialStory={find("story")}
-      initialValues={find("values")}
-    />
+    <>
+      <SchemaScript schema={organizationSchema} />
+      <AboutClient
+        initialHero={find("hero")}
+        initialStory={find("story")}
+        initialValues={find("values")}
+      />
+    </>
   );
 }
