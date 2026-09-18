@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { PAGE_METADATA } from '@/lib/metadata';
+import { organizationSchema } from '@/lib/schemas';
+import SchemaScript from '@/components/SchemaScript';
 
 export const metadata: Metadata = PAGE_METADATA.contact;
 
@@ -8,5 +10,10 @@ export default function ContactLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <SchemaScript schema={organizationSchema} />
+      {children}
+    </>
+  );
 }
