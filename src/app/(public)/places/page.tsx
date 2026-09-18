@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import PlacesClient from './PlacesClient';
 import { PAGE_METADATA } from '@/lib/metadata';
+import SchemaScript from '@/components/SchemaScript';
 import type { Metadata } from 'next';
-import Script from 'next/script';
 
 export const metadata: Metadata = PAGE_METADATA.places;
 export const revalidate = 600;
@@ -90,11 +90,7 @@ export default async function PlacesPage() {
 
   return (
     <>
-      <Script
-        id="places-structured-data"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      <SchemaScript schema={structuredData} />
       <PlacesClient initialPlaces={places || []} />
     </>
   );
