@@ -1,6 +1,9 @@
-import type { MetadataRoute } from 'next';
+import type { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
+  // Fallback to absolute URL if environment variable isn't set
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://sukhakartaholidayhome.in'
+
   return {
     rules: [
       {
@@ -16,7 +19,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://sukhakartaholidayhome.in/sitemap.xml',
-    host: 'https://sukhakartaholidayhome.in',
-  };
+    sitemap: `${baseUrl}/sitemap.xml`,
+  }
 }
