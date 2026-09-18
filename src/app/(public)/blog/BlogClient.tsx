@@ -190,6 +190,7 @@ function CategoryIllustration({ category, coverColor, accentColor, size }: {
 
 /* ─── Visual cover for non-featured cards only ─── */
 function PostCover({ post, size = "normal" }: { post: BlogPost; size?: "normal" | "small" }) {
+  const dims = size === "small" ? { width: 80, height: 80 } : { width: 400, height: 220 };
   return (
        <div
         className={`post-cover post-cover--${size}`}
@@ -203,6 +204,8 @@ function PostCover({ post, size = "normal" }: { post: BlogPost; size?: "normal" 
           src={post.coverImageUrl}
           alt={post.title}
           className={`cover-photo cover-photo--${size}`}
+          width={dims.width}
+          height={dims.height}
           loading="lazy"
         />
       )}
@@ -257,11 +260,13 @@ function FeaturedCard({ post }: { post: BlogPost }) {
 
       {/* RIGHT: dedicated image column — no absolute positioning, no overlay */}
       <div className="featured-image-col">
-        {post.coverImageUrl ? (
+       {post.coverImageUrl ? (
           <img
             src={post.coverImageUrl}
             alt={post.title}
             className="featured-real-img"
+            width={800}
+            height={420}
             loading="eager"
             decoding="sync"
           />
