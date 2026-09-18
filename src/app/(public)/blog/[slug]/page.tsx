@@ -284,7 +284,16 @@ export default async function BlogPostPage(
         {/* ── Cover image (if set) ── */}
         {post.cover_image_url && (
           <div className="bp-cover-img-wrap">
-            <img src={post.cover_image_url} alt={post.title} className="bp-cover-img" />
+                    {post.cover_image_url && (
+          <div className="bp-cover-img-wrap">
+            <img
+              src={post.cover_image_url}
+              alt={post.title}
+              className="bp-cover-img"
+              width={1200}
+              height={630}
+              loading="lazy"
+            />
           </div>
         )}
 
@@ -565,6 +574,13 @@ export default async function BlogPostPage(
           .bp-footer-nav { width: 100%; }
           .bp-book-btn { flex: 1; justify-content: center; }
         }
+         .bp-cover-img {
+           width: 100%; border-radius: 16px;
+           border: 1px solid rgba(255,255,255,0.07);
+           display: block;
+        +  height: auto;
+        +  aspect-ratio: 1200 / 630;
+         }
       `}</style>
     </>
   );
