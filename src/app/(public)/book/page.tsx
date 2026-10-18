@@ -438,14 +438,19 @@ export default function BookingPage() {
     loadRazorpay().catch(() => {});
 
     try {
-      const { data: bookings } = await supabase
-        .from("bookings").select("room_id")
-        .eq("status", "confirmed")
-        .lt("check_in", form.checkOut)
-        .gt("check_out", form.checkIn);
-
-      const bookedIds  = bookings?.map(b => b.room_id) || [];
-      const freeRooms  = rooms.filter(r => !bookedIds.includes(r.id));
+      const [{ data: bookings }, { data: blocks }] = await Promise.all([
+          supabase.from("bookings").select("room_id")
+            .eq("status", "confirmed")
+            .lt("check_in", form.checkOut).gt("check_out", form.checkIn),
+          supabase.from("room_blocked_dates").select("room_id")
+            .gte("blocked_date", form.checkIn).lt("blocked_date", form.checkOut),
+        ]);
+        
+        const unavailable = new Set([
+          ...(bookings ?? []).map(b => b.room_id),
+          ...(blocks ?? []).map(b => b.room_id),
+        ]);
+        const freeRooms = rooms.filter(r => !unavailable.has(r.id));
 
       if (freeRooms.length === 0) {
         setMessage("No rooms available for selected dates.");
