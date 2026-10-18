@@ -25,11 +25,14 @@ export function proxy(request: NextRequest) {
   }
 
   // ── 3. Block cron endpoint from public unless CRON_SECRET matches ──
-  if (pathname === "/api/sync-calendar" && request.method === "GET") {
-    const secret = request.headers.get("x-cron-secret");
-    const expected = process.env.CRON_SECRET;
-    if (!expected || secret !== expected) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (pathname === "/api/sync-calendar" && request.method === "GET") {
+      const expected = process.env.CRON_SECRET;
+      const bearer = request.headers.get("authorization");
+      const ok =
+        expected &&
+        (request.headers.get("x-cron-secret") === expected ||
+          bearer === `Bearer ${expected}`);
+      if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
 
