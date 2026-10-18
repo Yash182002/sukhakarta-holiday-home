@@ -216,7 +216,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, datesBlocked: blockedCount, errors: errors.length > 0 ? errors.slice(0, 10) : undefined, syncDuration });
   } catch (error) {
     console.error("[sync-calendar] Error:", error instanceof Error ? error.message : "unknown");
-    return NextResponse.json({ error: "Failed to sync calendar" }, { status: 500 });
+    return NextResponse.json(
+  { error: error instanceof Error ? error.message : "unknown" },
+  { status: 500 });
   }
 }
 
