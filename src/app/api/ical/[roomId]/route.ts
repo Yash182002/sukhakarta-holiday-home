@@ -136,7 +136,7 @@ if (!hasEvents) {
     `UID:${uid}`,
     `DTSTAMP:${dtstamp}`,
     "DTSTART;VALUE=DATE:20991231",
-    "DTEND;VALUE=DATE:20991231",
+    "DTEND;VALUE=DATE:21000101",
     "SUMMARY:Available",
     "STATUS:CONFIRMED",
     "TRANSP:TRANSPARENT",
