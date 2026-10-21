@@ -74,6 +74,12 @@ const nextConfig = {
       },
     ];
   },
+  // Friendly .ics URL for OTA calendar sync
+  async rewrites() {
+    return [
+      { source: "/ical/:roomId.ics", destination: "/api/ical/:roomId" },
+    ];
+  },
 };
 
 export default nextConfig;
