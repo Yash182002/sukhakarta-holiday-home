@@ -1,1115 +1,843 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
 
-declare global {
-  interface Window { Razorpay: any; }
-}
-
-/* ─────────────────────────── RAZORPAY LOADER ─────────────────────────── */
-
-// checkout.js used to be injected with next/script strategy="lazyOnload".
-// "Lazy" still meant every single /book view downloaded ~210 KB (checkout.js,
-// its v2 entry chunk and a 26 KB stylesheet, almost all of it unused) and
-// executed it on the main thread, including for the large majority of
-// visitors who never reach the payment step.
-//
-// It is now fetched only once the visitor is actually in the booking funnel:
-// warmed when they click "Check Availability", and awaited when they click
-// "Select & Pay". Warming means the script is normally already parsed by the
-// time it is needed, so the payment click stays instant.
-const RAZORPAY_SRC = "https://checkout.razorpay.com/v1/checkout.js";
-let razorpayPromise: Promise<void> | null = null;
-
-function loadRazorpay(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (window.Razorpay) return Promise.resolve();
-  if (!razorpayPromise) {
-    razorpayPromise = new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src   = RAZORPAY_SRC;
-      script.async = true;
-      script.onload  = () => resolve();
-      script.onerror = () => {
-        // Drop the cached promise so a later attempt can retry instead of
-        // permanently reusing the failed one.
-        razorpayPromise = null;
-        script.remove();
-        reject(new Error("Razorpay checkout failed to load"));
-      };
-      document.head.appendChild(script);
-    });
-  }
-  return razorpayPromise;
-}
-
-/* ─────────────────────────── TYPES ─────────────────────────── */
-
-type PricingTier = {
-  guests: number;
-  price: number;
-};
+/* ─────────────────────────── Types ─────────────────────────── */
 
 type Room = {
   id: string;
   name: string;
-  base_price: number;
-  effectiveBasePrice?: number;
-  extra_guest_price?: number;
-  max_guests: number;
-  pricing_tiers?: PricingTier[];
-  description?: string;
-  images?: string[];
-  amenities?: string[];
-  is_hall?: boolean;
-  room_type?: string;
+  ical_export_url?: string;
+  ical_export_enabled: boolean;
 };
 
-type RoomAllocation = {
-  roomId: string;
-  roomName: string;
-  guests: number;
-  pricePerNight: number;
-  maxGuests: number;
+type BlockedDate = {
+  id: string;
+  room_id: string;
+  blocked_date: string;
+  reason: string;
+  source: string;
+  external_booking_id?: string;
 };
 
-type BookingDate = {
-  check_in: string;
-  check_out: string;
+type CalendarSync = {
+  id: string;
+  room_id: string;
+  platform: string;
+  calendar_url: string;
+  sync_enabled: boolean;
+  last_sync_at?: string;
+  last_sync_status?: string;
+  sync_frequency_minutes: number;
 };
 
-/* ─────────────────────────── HELPERS ─────────────────────────── */
+/* ─────────────────────────── SVG Icons ─────────────────────────── */
 
-function getBlockedDates(bookings: BookingDate[]) {
-  const dates: string[] = [];
-  bookings.forEach(b => {
-    let d = new Date(b.check_in);
-    const end = new Date(b.check_out);
-    while (d < end) {
-      dates.push(d.toISOString().split("T")[0]);
-      d.setDate(d.getDate() + 1);
-    }
-  });
-  return dates;
+function IconToastSuccess() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
 }
 
-function getRoomPrice(room: Room, guestCount: number): number {
-  const basePrice = room.effectiveBasePrice ?? room.base_price;
-  const surcharge = room.extra_guest_price ?? 0;
-  const extraGuests = Math.max(0, guestCount - 2);
-  return basePrice + extraGuests * surcharge;
+function IconToastError() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
 }
 
-function suggestRoomCombinations(
-  availableRooms: Room[],
-  totalGuests: number
-): RoomAllocation[][] {
-  const combinations: RoomAllocation[][] = [];
-  const seen = new Set<string>();
+function IconUnblock() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
 
-  const regularRooms = availableRooms.filter(r => !r.is_hall && r.room_type !== 'hall');
-  const hallRooms    = availableRooms.filter(r => r.is_hall  || r.room_type === 'hall');
+function IconCalendar() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
 
-  const totalRoomCapacity = regularRooms.reduce((sum, r) => sum + r.max_guests, 0);
+function IconChevronLeft() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
 
-  if (totalGuests > totalRoomCapacity && hallRooms.length > 0) {
-    for (const hall of hallRooms) {
-      const roomAllocations: RoomAllocation[] = regularRooms.map(room => ({
-        roomId: room.id, roomName: room.name,
-        guests: room.max_guests,
-        pricePerNight: getRoomPrice(room, room.max_guests),
-        maxGuests: room.max_guests,
-      }));
-      const remainingGuests = totalGuests - totalRoomCapacity;
-      if (remainingGuests > 0 && remainingGuests <= hall.max_guests) {
-        roomAllocations.push({
-          roomId: hall.id, roomName: hall.name,
-          guests: remainingGuests,
-          pricePerNight: getRoomPrice(hall, remainingGuests),
-          maxGuests: hall.max_guests,
-        });
-        combinations.push(roomAllocations);
-      }
+function IconChevronRight() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
+
+function IconChevronDown() {
+  return (
+    <svg className="cm-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
+function IconBan() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+}
+
+function IconUpload() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" y1="2" x2="12" y2="15" />
+    </svg>
+  );
+}
+
+function IconCopy() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function IconDownload() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="8 17 12 21 16 17" />
+      <line x1="12" y1="3" x2="12" y2="21" />
+    </svg>
+  );
+}
+
+function IconSync() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+/* Local-time YYYY-MM-DD (toISOString() shifts dates back a day in IST) */
+const fmt = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/* ─────────────────────────── Component ─────────────────────────── */
+
+export default function RoomCalendarManager() {
+  const [rooms, setRooms]               = useState<Room[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<string>("");
+  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
+  const [calendarSyncs, setCalendarSyncs] = useState<CalendarSync[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const [blockDate, setBlockDate]     = useState("");
+  const [blockReason, setBlockReason] = useState("");
+  const [syncPlatform, setSyncPlatform] = useState("booking_com");
+  const [syncUrl, setSyncUrl]         = useState("");
+
+  const [loading, setLoading]   = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [message, setMessage]   = useState({ type: "", text: "" });
+
+  useEffect(() => { loadRooms(); }, []);
+
+  useEffect(() => {
+    if (selectedRoom) { loadBlockedDates(); loadCalendarSyncs(); }
+  }, [selectedRoom, currentMonth]);
+
+  useEffect(() => {
+    if (message.text) {
+      const t = setTimeout(() => setMessage({ type: "", text: "" }), 4000);
+      return () => clearTimeout(t);
     }
-    for (const hall of hallRooms) {
-      if (hall.max_guests >= totalGuests) {
-        combinations.push([{
-          roomId: hall.id, roomName: hall.name,
-          guests: totalGuests,
-          pricePerNight: getRoomPrice(hall, totalGuests),
-          maxGuests: hall.max_guests,
-        }]);
-      }
-    }
-    return combinations.sort((a, b) => {
-      const aAll = a.length === regularRooms.length + 1;
-      const bAll = b.length === regularRooms.length + 1;
-      if (aAll && !bAll) return -1;
-      if (!aAll && bAll) return 1;
-      return a.reduce((s, r) => s + r.pricePerNight, 0) - b.reduce((s, r) => s + r.pricePerNight, 0);
+  }, [message]);
+
+  const loadRooms = async () => {
+    const { data } = await supabase.from("rooms")
+      .select("id, name, ical_export_url, ical_export_enabled").order("name");
+    if (data) { setRooms(data); if (data.length > 0 && !selectedRoom) setSelectedRoom(data[0].id); }
+  };
+
+  const loadBlockedDates = async () => {
+    const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const endDate   = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    const { data } = await supabase.from("room_blocked_dates").select("*")
+      .eq("room_id", selectedRoom)
+      .gte("blocked_date", fmt(startDate))
+      .lte("blocked_date", fmt(endDate))
+      .order("blocked_date");
+    if (data) setBlockedDates(data);
+  };
+
+  const loadCalendarSyncs = async () => {
+    const { data } = await supabase.from("external_calendar_sync").select("*").eq("room_id", selectedRoom);
+    if (data) setCalendarSyncs(data);
+  };
+
+  const blockSingleDate = async () => {
+    if (!blockDate) { setMessage({ type: "error", text: "Please select a date" }); return; }
+    setLoading(true);
+    const { error } = await supabase.from("room_blocked_dates").insert({
+      room_id: selectedRoom, blocked_date: blockDate,
+      reason: blockReason || "Manually blocked", source: "manual",
     });
-  }
+    if (error) { setMessage({ type: "error", text: "Failed to block date: " + error.message }); }
+    else { setMessage({ type: "success", text: "Date blocked successfully" }); setBlockDate(""); setBlockReason(""); loadBlockedDates(); }
+    setLoading(false);
+  };
 
-  if (totalGuests >= 11) {
-    for (const hall of hallRooms) {
-      if (hall.max_guests >= totalGuests) {
-        combinations.push([{
-          roomId: hall.id, roomName: hall.name,
-          guests: totalGuests,
-          pricePerNight: getRoomPrice(hall, totalGuests),
-          maxGuests: hall.max_guests,
-        }]);
-      }
-    }
-    addMultiRoomCombinations(regularRooms, totalGuests, combinations, seen);
-    return combinations.sort((a, b) => {
-      const aIsHall = a.length === 1 && (availableRooms.find(r => r.id === a[0].roomId)?.is_hall || availableRooms.find(r => r.id === a[0].roomId)?.room_type === 'hall');
-      const bIsHall = b.length === 1 && (availableRooms.find(r => r.id === b[0].roomId)?.is_hall || availableRooms.find(r => r.id === b[0].roomId)?.room_type === 'hall');
-      if (aIsHall && !bIsHall) return -1;
-      if (!aIsHall && bIsHall) return 1;
-      return a.reduce((s, r) => s + r.pricePerNight, 0) - b.reduce((s, r) => s + r.pricePerNight, 0);
-    }).slice(0, 6);
-  }
+  const unblockDate = async (dateId: string) => {
+    if (!confirm("Unblock this date?")) return;
+    const { error } = await supabase.from("room_blocked_dates").delete().eq("id", dateId);
+    if (error) { setMessage({ type: "error", text: "Failed to unblock date" }); }
+    else { setMessage({ type: "success", text: "Date unblocked" }); loadBlockedDates(); }
+  };
 
-  for (const room of regularRooms) {
-    if (room.max_guests >= totalGuests) {
-      combinations.push([{
-        roomId: room.id, roomName: room.name,
-        guests: totalGuests,
-        pricePerNight: getRoomPrice(room, totalGuests),
-        maxGuests: room.max_guests,
-      }]);
-    }
-  }
+  const addCalendarSync = async () => {
+    if (!syncUrl) { setMessage({ type: "error", text: "Please enter calendar URL" }); return; }
+    setLoading(true);
 
-  if (totalGuests < 4) {
-    return combinations.sort((a, b) =>
-      a.reduce((s, r) => s + r.pricePerNight, 0) - b.reduce((s, r) => s + r.pricePerNight, 0)
+    // Upsert instead of insert so re-submitting the same room+platform
+    // updates the URL rather than hitting the unique constraint
+    // "external_calendar_sync_room_id_platform_key"
+    const { error } = await supabase.from("external_calendar_sync").upsert(
+      { room_id: selectedRoom, platform: syncPlatform, calendar_url: syncUrl, sync_enabled: true },
+      { onConflict: "room_id,platform" }
     );
-  }
 
-  addMultiRoomCombinations(regularRooms, totalGuests, combinations, seen);
-
-  return combinations.sort((a, b) =>
-    a.reduce((s, r) => s + r.pricePerNight, 0) - b.reduce((s, r) => s + r.pricePerNight, 0)
-  ).slice(0, 6);
-}
-
-function addMultiRoomCombinations(
-  availableRooms: Room[],
-  totalGuests: number,
-  combinations: RoomAllocation[][],
-  seen: Set<string>
-) {
-  for (let i = 0; i < availableRooms.length; i++) {
-    for (let j = i; j < availableRooms.length; j++) {
-      const room1 = availableRooms[i];
-      const room2 = availableRooms[j];
-      if (i === j && availableRooms.filter(r => r.id === room1.id).length < 2) continue;
-
-      for (let g1 = 2; g1 <= Math.min(room1.max_guests, totalGuests - 2); g1++) {
-        const g2 = totalGuests - g1;
-        if (g2 >= 2 && g2 <= room2.max_guests) {
-          const combo = [
-            { roomId: room1.id, roomName: room1.name, guests: g1, pricePerNight: getRoomPrice(room1, g1), maxGuests: room1.max_guests },
-            { roomId: room2.id, roomName: room2.name, guests: g2, pricePerNight: getRoomPrice(room2, g2), maxGuests: room2.max_guests },
-          ];
-          const key = combo.map(r => `${r.roomId}-${r.guests}`).sort().join('|');
-          if (!seen.has(key)) { seen.add(key); combinations.push(combo); }
-        }
-      }
+    if (error) { setMessage({ type: "error", text: "Failed to add sync: " + error.message }); }
+    else {
+      setMessage({ type: "success", text: "Calendar sync saved" });
+      setSyncUrl("");
+      loadCalendarSyncs();
     }
-  }
-
-  if (availableRooms.length >= 3 && totalGuests >= 6) {
-    for (let i = 0; i < availableRooms.length; i++) {
-      for (let j = i; j < availableRooms.length; j++) {
-        for (let k = j; k < availableRooms.length; k++) {
-          const room1 = availableRooms[i];
-          const room2 = availableRooms[j];
-          const room3 = availableRooms[k];
-          const base = Math.floor(totalGuests / 3);
-          const rem  = totalGuests % 3;
-          const g1 = base + (0 < rem ? 1 : 0);
-          const g2 = base + (1 < rem ? 1 : 0);
-          const g3 = base;
-          if (g1 >= 2 && g1 <= room1.max_guests &&
-              g2 >= 2 && g2 <= room2.max_guests &&
-              g3 >= 2 && g3 <= room3.max_guests) {
-            const combo = [
-              { roomId: room1.id, roomName: room1.name, guests: g1, pricePerNight: getRoomPrice(room1, g1), maxGuests: room1.max_guests },
-              { roomId: room2.id, roomName: room2.name, guests: g2, pricePerNight: getRoomPrice(room2, g2), maxGuests: room2.max_guests },
-              { roomId: room3.id, roomName: room3.name, guests: g3, pricePerNight: getRoomPrice(room3, g3), maxGuests: room3.max_guests },
-            ];
-            const key = combo.map(r => `${r.roomId}-${r.guests}`).sort().join('|');
-            if (!seen.has(key)) { seen.add(key); combinations.push(combo); }
-          }
-        }
-      }
-    }
-  }
-}
-
-/* ─────────────────────────── MAIN COMPONENT ─────────────────────────── */
-
-export default function BookingPage() {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
-  const [selectedRooms, setSelectedRooms] = useState<RoomAllocation[]>([]);
-  const [roomSuggestions, setRoomSuggestions] = useState<RoomAllocation[][]>([]);
-  const [blockedDates, setBlockedDates] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const checkoutInputRef = useRef<HTMLInputElement>(null);
-
-  const [form, setForm] = useState({
-    name: "", email: "", phone: "",
-    checkIn: "", checkOut: "", guests: 1,
-  });
-
-  const [errors, setErrors] = useState({
-    name: "", email: "", phone: "",
-    checkIn: "", checkOut: "", guests: "",
-  });
-
-  // Pre-fill contact details for logged-in customers so they only need
-  // to pick dates + guest count.
-  useEffect(() => {
-    if (!user) return;
-
-    let cancelled = false;
-
-    (async () => {
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("full_name, phone")
-        .eq("id", user.id)
-        .single();
-
-      if (cancelled) return;
-
-      setForm(p => ({
-        ...p,
-        name:  p.name  || profile?.full_name || (user.user_metadata?.full_name as string) || "",
-        email: p.email || user.email || "",
-        phone: p.phone || profile?.phone || (user.user_metadata?.phone as string) || "",
-      }));
-    })();
-
-    return () => { cancelled = true; };
-  }, [user]);
-
-  // Normalizes a leading 0 (landline-style entry) or a 91 country-code
-  // prefix down to the bare 10-digit mobile number before validating —
-  // previously a number like "09876543210" or "919876543210" was rejected
-  // outright instead of being cleaned up first.
-  const normalizePhone = (raw: string) => {
-    let n = raw.replace(/\D/g, "");
-    if (n.length === 11 && n.startsWith("0")) n = n.slice(1);
-    else if (n.length === 12 && n.startsWith("91")) n = n.slice(2);
-    else if (n.length === 13 && n.startsWith("091")) n = n.slice(3);
-    return n;
+    setLoading(false);
   };
 
-  // FIX: Only treat contact info as "saved" once the phone number is a
-  // genuinely complete, valid number — not just any non-empty string.
-  // Previously this checked `Boolean(form.phone)`, which became true after
-  // typing a single digit. That flipped `hasSavedContactInfo` to true mid-
-  // keystroke, which unmounted the entire name/email/phone block (including
-  // the input the user was actively typing into), making the phone field
-  // "disappear" and leaving form.phone empty when the form was submitted.
-  const hasSavedContactInfo = useMemo(() => {
-    if (!user || !form.name || !form.email) return false;
-    const digits = normalizePhone(form.phone);
-    return digits.length === 10 && /^[6-9]/.test(digits);
-  }, [user, form.name, form.email, form.phone]);
-
-  const today    = useMemo(() => new Date().toISOString().split("T")[0], []);
-  const tomorrow = useMemo(() => {
-    const d = new Date(); d.setDate(d.getDate() + 1);
-    return d.toISOString().split("T")[0];
-  }, []);
-
-  // PERF: this page deliberately has no scroll-reveal machinery.
-  //
-  // The trust bar, reservation form and options panel are all first-screen
-  // content, but they used to carry a `.reveal` class that set `opacity: 0`
-  // in CSS and only cleared it from an IntersectionObserver callback that ran
-  // after React had hydrated. On a mid-range phone over slow 4G that meant
-  // the whole booking form stayed invisible until the client bundle (React +
-  // supabase-js) had downloaded, parsed and hydrated — Largest Contentful
-  // Paint was pinned to hydration at ~6.1 s even though First Contentful
-  // Paint was 1.0 s and the server-rendered HTML had contained the finished
-  // form all along.
-  //
-  // The markup now paints as it arrives, so LCP tracks FCP. The only entrance
-  // animation left is a pure-CSS one on the availability cards, which are
-  // rendered in response to a click and so can never affect load metrics.
-  //
-  // If a scroll reveal is ever wanted here again, animate from a *visible*
-  // resting state — never leave above-the-fold content at opacity 0 waiting
-  // for JS.
-
-  useEffect(() => {
-    let mounted = true;
-    supabase
-      .from("rooms")
-      .select("id, name, base_price, max_guests, extra_guest_price, pricing_tiers, description, images, amenities, is_hall, room_type")
-      .then(({ data }) => { if (data && mounted) setRooms(data); });
-    return () => { mounted = false; };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const loadBlockedDates = async () => {
-      try {
-        const [bookingsResult, blockedResult] = await Promise.all([
-          supabase.from("bookings").select("check_in, check_out").eq("status", "confirmed"),
-         supabase.from("room_blocked_dates").select("blocked_date"),
-        ]);
-        if (!mounted) return;
-        const dates = new Set<string>();
-        if (bookingsResult.data) getBlockedDates(bookingsResult.data).forEach(d => dates.add(d));
-        if (blockedResult.data) blockedResult.data.forEach(d => dates.add(d.blocked_date));
-        setBlockedDates(Array.from(dates));
-      } catch (error) { console.error("Error loading blocked dates:", error); }
-    };
-    loadBlockedDates();
-    return () => { mounted = false; };
-  }, []);
-
-  const nights = useMemo(() => {
-    if (!form.checkIn || !form.checkOut) return 0;
-    return Math.ceil((new Date(form.checkOut).getTime() - new Date(form.checkIn).getTime()) / 86400000);
-  }, [form.checkIn, form.checkOut]);
-
-  const totalAmount = useMemo(() => {
-    return selectedRooms.reduce((sum, r) => sum + (r.pricePerNight * nights), 0);
-  }, [selectedRooms, nights]);
-
-  // Allows apostrophes, hyphens and periods (D'Souza, Anne-Marie, etc.) —
-  // the old letters-and-spaces-only regex silently rejected real saved
-  // names that were pre-filled correctly, blocking existing customers
-  // before they ever touched the field.
-  const validateName     = (v: string) => !v.trim() ? "Full name is required" : v.trim().length < 2 ? "Name must be at least 2 characters" : !/^[a-zA-Z\s.'-]+$/.test(v) ? "Name should only contain letters, spaces, and ' - ." : "";
-  const validateEmail    = (v: string) => !v.trim() ? "Email is required" : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "Please enter a valid email address" : "";
-  const validatePhone    = (v: string) => { const n = normalizePhone(v); return !v.trim() ? "Phone number is required" : n.length !== 10 ? "Phone number must be exactly 10 digits" : !/^[6-9]/.test(n) ? "Phone number must start with 6, 7, 8, or 9" : ""; };
-  const validateCheckIn  = (v: string) => !v ? "Check-in date is required" : v < today ? "Check-in date cannot be in the past" : blockedDates.includes(v) ? "This date is not available" : "";
-  const validateCheckOut = (v: string, ci: string) => !v ? "Check-out date is required" : !ci ? "Please select check-in date first" : v <= ci ? "Check-out must be after check-in date" : "";
-  const validateGuests   = (v: number) => (!v || v < 1) ? "At least 1 guest is required" : v > 50 ? "Maximum 50 guests allowed" : "";
-
-  // Returns the computed errors object (not just a boolean) so callers can
-  // report exactly which field failed and why, instead of a generic
-  // "please fix the errors" with no indication of the actual problem.
-  const validateForm = () => {
-    const newErrors = {
-      name:     validateName(form.name),
-      email:    validateEmail(form.email),
-      phone:    validatePhone(form.phone),
-      checkIn:  validateCheckIn(form.checkIn),
-      checkOut: validateCheckOut(form.checkOut, form.checkIn),
-      guests:   validateGuests(form.guests),
-    };
-    setErrors(newErrors);
-    return newErrors;
+  const toggleSync = async (syncId: string, currentStatus: boolean) => {
+    const { error } = await supabase.from("external_calendar_sync")
+      .update({ sync_enabled: !currentStatus }).eq("id", syncId);
+    if (!error) { setMessage({ type: "success", text: `Sync ${!currentStatus ? "enabled" : "disabled"}` }); loadCalendarSyncs(); }
   };
 
-  const checkAvailability = useCallback(async () => {
-    const formErrors = validateForm();
-    const failedMessages = Object.values(formErrors).filter(Boolean);
-    if (failedMessages.length > 0) {
-      setMessage(`Please fix: ${failedMessages.join(" · ")}`);
-      return;
-    }
-    setMessage(""); setAvailableRooms([]); setSelectedRooms([]); setRoomSuggestions([]); setLoading(true);
+  const deleteSync = async (syncId: string) => {
+    if (!confirm("Delete this calendar sync?")) return;
+    const { error } = await supabase.from("external_calendar_sync").delete().eq("id", syncId);
+    if (!error) { setMessage({ type: "success", text: "Sync deleted" }); loadCalendarSyncs(); }
+  };
 
-    // The visitor is in the booking funnel now, so start fetching the Razorpay
-    // checkout bundle in the background. This is well past LCP and only costs
-    // bandwidth for people who are actually going to pay. Failures are ignored
-    // here — startMultiRoomPayment awaits (and retries) it properly.
-    loadRazorpay().catch(() => {});
-
+  const syncNow = async (syncId: string) => {
+    setSyncingId(syncId);
     try {
-      const [{ data: bookings }, { data: blocks }] = await Promise.all([
-          supabase.from("bookings").select("room_id")
-            .eq("status", "confirmed")
-            .lt("check_in", form.checkOut).gt("check_out", form.checkIn),
-          supabase.from("room_blocked_dates").select("room_id")
-            .gte("blocked_date", form.checkIn).lt("blocked_date", form.checkOut),
-        ]);
-        
-        const unavailable = new Set([
-          ...(bookings ?? []).map(b => b.room_id),
-          ...(blocks ?? []).map(b => b.room_id),
-        ]);
-        const freeRooms = rooms.filter(r => !unavailable.has(r.id));
-
-      if (freeRooms.length === 0) {
-        setMessage("No rooms available for selected dates.");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setMessage({ type: "error", text: "Session expired. Please log in again." });
         return;
       }
-
-      const { data: overrideData } = await supabase
-        .from("room_rate_overrides")
-        .select("room_id, price")
-        .in("room_id", freeRooms.map(r => r.id))
-        .gte("date", form.checkIn)
-        .lt("date", form.checkOut);
-
-      const overrideSums: Record<string, { sum: number; count: number }> = {};
-      (overrideData || []).forEach(o => {
-        if (!overrideSums[o.room_id]) overrideSums[o.room_id] = { sum: 0, count: 0 };
-        overrideSums[o.room_id].sum   += o.price;
-        overrideSums[o.room_id].count += 1;
-      });
-
-      const freeRoomsWithRates = freeRooms.map(r => {
-        const entry = overrideSums[r.id];
-        if (!entry) return r;
-        return { ...r, effectiveBasePrice: Math.round(entry.sum / entry.count) };
-      });
-
-      setAvailableRooms(freeRoomsWithRates);
-
-      const suggestions = suggestRoomCombinations(freeRoomsWithRates, form.guests);
-      setRoomSuggestions(suggestions);
-
-      if (suggestions.length === 0) {
-        setMessage(`Sorry, we cannot accommodate ${form.guests} guests with available rooms.`);
-      } else {
-        setMessage(`${suggestions.length} option${suggestions.length > 1 ? 's' : ''} available for ${form.guests} guest${form.guests > 1 ? 's' : ''}!`);
-      }
-    } catch (error) {
-      console.error("Error checking availability:", error);
-      setMessage("Error checking availability. Please try again.");
-    } finally { setLoading(false); }
-  }, [form, blockedDates, rooms, validateForm]);
-
-  const handleSelectRooms = useCallback((combo: RoomAllocation[]) => {
-    setSelectedRooms(combo);
-    const formErrors = validateForm();
-    const failedMessages = Object.values(formErrors).filter(Boolean);
-    if (failedMessages.length > 0) {
-      alert(`Please fix: ${failedMessages.join(" · ")}`);
-      return;
-    }
-    if (!user) { setShowLoginPrompt(true); return; }
-    startMultiRoomPayment(combo);
-  }, [form, user]);
-
-  const startMultiRoomPayment = useCallback(async (roomAllocations: RoomAllocation[]) => {
-    const totalAmount = roomAllocations.reduce((sum, r) => sum + (r.pricePerNight * nights), 0);
-    const bookingGroupId = crypto.randomUUID();
-
-    // Kicked off before the DB writes so the script download overlaps the
-    // booking inserts and the create-order round trip instead of following
-    // them. Normally already resolved from the "Check Availability" warm-up.
-    const razorpayReady = loadRazorpay();
-
-    try {
-      const bookingPromises = roomAllocations.map(allocation =>
-        supabase.from("bookings").insert({
-          user_id:          user!.id,
-          room_id:          allocation.roomId,
-          customer_name:    form.name.trim(),
-          email:            form.email.trim(),
-          phone:            normalizePhone(form.phone),
-          check_in:         form.checkIn,
-          check_out:        form.checkOut,
-          guests:           allocation.guests,
-          total_amount:     allocation.pricePerNight * nights,
-          advance_amount:   allocation.pricePerNight * nights,
-          status:           "pending",
-          payment_status:   "pending",
-          is_multi_room:    roomAllocations.length > 1,
-          booking_group_id: bookingGroupId,
-          room_ids:         roomAllocations.map(r => r.roomId),
-          rooms_count:      roomAllocations.length,
-        }).select().single()
-      );
-
-      const bookingResults = await Promise.all(bookingPromises);
-      const bookingIds = bookingResults.map(b => b.data!.id);
-
-      const res   = await fetch("/api/create-order", {
+      const res = await fetch("/api/admin/sync-now", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalAmount }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ roomId: selectedRoom, syncId }),
       });
-      const order = await res.json();
-
-      const options = {
-        key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount:      order.amount,
-        currency:    "INR",
-        name:        "Sukhakarta Holiday Home",
-        description: `Booking ${roomAllocations.length} room${roomAllocations.length > 1 ? 's' : ''} - ${nights} night${nights > 1 ? 's' : ''}`,
-        order_id:    order.id,
-        notes: {
-          booking_ids:      bookingIds.join(','),
-          booking_group_id: bookingGroupId,
-          room_count:       roomAllocations.length,
-        },
-        handler: async function (response: any) {
-          // ── SECURITY: never let the browser mark its own booking as
-          // "confirmed"/"completed" directly — that update was reachable
-          // by anyone with the public anon key, with or without a real
-          // payment. Ask the server to verify the Razorpay HMAC signature
-          // first, and only the server (service role) flips the booking.
-          try {
-            const verifyRes = await fetch("/api/verify-payment", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpay_order_id:   response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature:  response.razorpay_signature,
-                booking_ids:         bookingIds,
-              }),
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok || !verifyData.success) {
-              console.error("Payment verification failed:", verifyData);
-              alert(
-                "We couldn't confirm your payment automatically. If money was deducted, " +
-                "please contact us with your payment ID and we'll verify it manually: " +
-                response.razorpay_payment_id
-              );
-              return;
-            }
-          } catch (err) {
-            console.error("Payment verification request failed:", err);
-            alert(
-              "We couldn't confirm your payment automatically. If money was deducted, " +
-              "please contact us with your payment ID and we'll verify it manually: " +
-              response.razorpay_payment_id
-            );
-            return;
-          }
-          // Notification emails are now triggered server-side by
-          // /api/verify-payment immediately after it confirms the booking
-          // (using authoritative DB data + the internal secret, which the
-          // browser must never hold) — no client-side call needed here.
-          setShowSuccess(true);
-          setTimeout(() => router.push("/user/dashboard"), 3000);
-        },
-        prefill: { name: form.name, email: form.email, contact: normalizePhone(form.phone) },
-        theme:   { color: "#f97316" },
-      };
-
-      await razorpayReady;
-      new window.Razorpay(options).open();
-    } catch (error) {
-      console.error("Payment error:", error);
-      alert("Failed to initiate payment. Please try again.");
+      const d = await res.json().catch(() => ({}));
+      setMessage({
+        type: res.ok ? "success" : "error",
+        text: res.ok ? `Blocked ${d.datesBlocked} dates` : d.error || "Sync failed",
+      });
+    } catch {
+      setMessage({ type: "error", text: "Network error while syncing" });
+    } finally {
+      setSyncingId(null);
+      loadCalendarSyncs();
+      loadBlockedDates();
     }
-  }, [form, user, nights, router]);
+  };
 
-  const handleNameChange     = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { const v = e.target.value; setForm(p => ({ ...p, name: v })); setErrors(p => ({ ...p, name: validateName(v) })); }, []);
-  const handleEmailChange    = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { const v = e.target.value; setForm(p => ({ ...p, email: v })); setErrors(p => ({ ...p, email: validateEmail(v) })); }, []);
-  const handlePhoneChange    = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { const v = e.target.value.replace(/\D/g, "").slice(0, 10); setForm(p => ({ ...p, phone: v })); setErrors(p => ({ ...p, phone: validatePhone(v) })); }, []);
+  const generateICalUrl = () => `${window.location.origin}/api/ical/${selectedRoom}`;
+  const copyICalUrl = () => {
+    navigator.clipboard.writeText(generateICalUrl());
+    setMessage({ type: "success", text: "iCal URL copied to clipboard!" });
+  };
 
-  const handleCheckInChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
-    setForm(p => ({ ...p, checkIn: v }));
-    setErrors(p => ({ ...p, checkIn: validateCheckIn(v), checkOut: validateCheckOut(p.checkOut, v) }));
-    setAvailableRooms([]); setSelectedRooms([]); setRoomSuggestions([]);
-    if (v) setTimeout(() => { checkoutInputRef.current?.focus(); checkoutInputRef.current?.showPicker?.(); }, 150);
-  }, [form.checkOut, blockedDates, today]);
+  const getDaysInMonth = () => {
+    const year = currentMonth.getFullYear(), month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < firstDay.getDay(); i++) days.push(null);
+    for (let i = 1; i <= lastDay.getDate(); i++) days.push(new Date(year, month, i));
+    return days;
+  };
 
-  const handleCheckOutChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-  const v = e.target.value;
-  setForm(p => {
-    const updated = { ...p, checkOut: v };
-    setErrors(prev => ({ ...prev, checkOut: validateCheckOut(v, updated.checkIn) }));
-    return updated;
-  });
-  setAvailableRooms([]);
-  setSelectedRooms([]);
-  setRoomSuggestions([]);
-  }, []);
-  const handleGuestsChange   = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { const v = Number(e.target.value); setForm(p => ({ ...p, guests: v })); setErrors(p => ({ ...p, guests: validateGuests(v) })); setAvailableRooms([]); setSelectedRooms([]); setRoomSuggestions([]); }, []);
+  const isDateBlocked = (date: Date | null) => {
+    if (!date) return false;
+    const dateStr = fmt(date);
+    return blockedDates.some(bd => bd.blocked_date === dateStr);
+  };
 
+  const getBlockInfo = (date: Date | null) => {
+    if (!date) return null;
+    const dateStr = fmt(date);
+    return blockedDates.find(bd => bd.blocked_date === dateStr);
+  };
+
+  const isToday = (date: Date | null) => {
+    if (!date) return false;
+    const t = new Date();
+    return date.getDate() === t.getDate() && date.getMonth() === t.getMonth() && date.getFullYear() === t.getFullYear();
+  };
+
+  const platformLabel: Record<string, string> = {
+    booking_com: "Booking.com", airbnb: "Airbnb", expedia: "Expedia", vrbo: "VRBO", other: "Other",
+  };
+
+  const platformColor: Record<string, string> = {
+    booking_com: "#003580", airbnb: "#FF385C", expedia: "#FFC72C",
+    vrbo: "#195092", website: "#f97316", manual: "#64748b", other: "#8b5cf6",
+  };
+
+  /* ─── Render ─── */
   return (
-    <div className="booking-page">
-      <div className="bg-mesh" aria-hidden="true">
-        <div className="mesh-layer-1" />
-        <div className="grid-overlay" />
-      </div>
+    <>
+      <PageStyles />
+      <div className="cm-root">
 
-      <section className="hero">
-        <div className="hero-content">
-          <div className="hero-badge">✦ Reserve Your Stay ✦</div>
-          <h1 className="hero-title">Book Your Stay</h1>
-          <p className="hero-subtitle">Create unforgettable memories at Sukhakarta Holiday Home</p>
-          {!user && (
-            <div className="login-notice">
-              <p>
-                Already have an account?{" "}
-                <a href="/user/login">Login</a> or{" "}
-                <a href="/user/register">Register</a>
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <div className="container">
-
-        {/* ── TRUST BAR ── */}
-        <div className="trust-bar">
-          <div className="trust-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            <span>SSL Secured</span>
-          </div>
-          <div className="trust-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="1" y="4" width="22" height="16" rx="2"/>
-              <line x1="1" y1="10" x2="23" y2="10"/>
-            </svg>
-            <span>UPI · Cards · Wallets</span>
-          </div>
-          <div className="trust-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-            </svg>
-            <a href="https://wa.me/918087541496" target="_blank" rel="noopener noreferrer">WhatsApp Support 24/7</a>
-          </div>
-          <div className="trust-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <polyline points="9 12 11 14 15 10"/>
-            </svg>
-            <span>Instant Confirmation</span>
-          </div>
-        </div>
-
-        <div className="booking-grid">
-
-          {/* ── Form ── */}
-          <div className="form-section">
-            <h2>Reservation Details</h2>
-            <p className="form-subtitle">
-              {hasSavedContactInfo ? "Just pick your dates and guest count" : "All fields are mandatory"}
-            </p>
-
-            {!hasSavedContactInfo && (
-              <>
-                <div className="form-group">
-                  <label>Full Name *</label>
-                  <input className={`input ${errors.name ? "error" : ""}`} placeholder="Your full name"
-                    value={form.name} onChange={handleNameChange}
-                    onBlur={() => setErrors(p => ({ ...p, name: validateName(form.name) }))} />
-                  {errors.name && <span className="error-text">{errors.name}</span>}
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Email *</label>
-                    <input className={`input ${errors.email ? "error" : ""}`} type="email"
-                      placeholder="Enter Your Email" value={form.email} onChange={handleEmailChange}
-                      onBlur={() => setErrors(p => ({ ...p, email: validateEmail(form.email) }))} />
-                    {errors.email && <span className="error-text">{errors.email}</span>}
-                  </div>
-                  <div className="form-group">
-                    <label>Phone *</label>
-                    <input className={`input ${errors.phone ? "error" : ""}`} type="tel"
-                      placeholder="Your 10-digit number" value={form.phone}
-                      onChange={handlePhoneChange} maxLength={10}
-                      onBlur={() => setErrors(p => ({ ...p, phone: validatePhone(form.phone) }))} />
-                    {errors.phone && <span className="error-text">{errors.phone}</span>}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="form-row">
-              <div className="form-group">
-                <label>Check-in Date *</label>
-                <input type="date" className={`input ${errors.checkIn ? "error" : ""}`}
-                  value={form.checkIn} onChange={handleCheckInChange} min={today} />
-                {errors.checkIn && <span className="error-text">{errors.checkIn}</span>}
+        {/* ── Top Bar ── */}
+        <header className="cm-topbar">
+          <div className="cm-topbar-inner">
+            <div className="cm-brand">
+              <div className="cm-brand-icon"><IconCalendar /></div>
+              <div>
+                <h1 className="cm-title">Calendar Manager</h1>
+                <p className="cm-subtitle">Room availability &amp; channel sync</p>
               </div>
-              <div className="form-group">
-                <label>Check-out Date *</label>
-                <input ref={checkoutInputRef} type="date"
-                  className={`input ${errors.checkOut ? "error" : ""}`}
-                  value={form.checkOut} onChange={handleCheckOutChange}
-                  min={form.checkIn || tomorrow} disabled={!form.checkIn} />
-                {errors.checkOut && <span className="error-text">{errors.checkOut}</span>}
+            </div>
+            <div className="cm-room-picker">
+              <label className="cm-picker-label">Property</label>
+              <div className="cm-select-wrap">
+                <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} className="cm-select">
+                  {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+                <IconChevronDown />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* ── Toast ── */}
+        {message.text && (
+          <div className={`cm-toast cm-toast--${message.type}`} role="status">
+            <span className="cm-toast-icon">
+              {message.type === "success" ? <IconToastSuccess /> : <IconToastError />}
+            </span>
+            {message.text}
+          </div>
+        )}
+
+        <main className="cm-body">
+          {/* ══ LEFT – Calendar ══ */}
+          <section className="cm-panel cm-panel--calendar">
+            <div className="cm-panel-head">
+              <h2 className="cm-panel-title">Availability</h2>
+              <div className="cm-month-nav">
+                <button
+                  className="cm-nav-btn"
+                  aria-label="Previous month"
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+                >
+                  <IconChevronLeft />
+                </button>
+                <span className="cm-month-label">
+                  {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                </span>
+                <button
+                  className="cm-nav-btn"
+                  aria-label="Next month"
+                  onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+                >
+                  <IconChevronRight />
+                </button>
               </div>
             </div>
 
-            <div className="form-group">
-              <label>Number of Guests *</label>
-              <input type="number" min={1} max={50}
-                className={`input ${errors.guests ? "error" : ""}`}
-                value={form.guests} onChange={handleGuestsChange} />
-              {errors.guests && <span className="error-text">{errors.guests}</span>}
+            <div className="cm-cal-weekdays">
+              {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                <div key={i} className="cm-weekday">{d}</div>
+              ))}
             </div>
 
-            {form.guests > 0 && rooms.length > 0 && (
-              <div className="price-preview-section">
-                <p className="price-preview-label">Estimated starting price</p>
-                <div className="price-preview-range">
-                  {(() => {
-                    const regularRooms = rooms.filter(r => !r.is_hall && r.room_type !== 'hall');
-                    if (!regularRooms.length) return null;
-                    const minPrice = Math.min(...regularRooms.map(r => getRoomPrice(r, form.guests)));
-                    return (
-                      <span className="price-from">
-                        From <strong>₹{minPrice.toLocaleString()}</strong>/night
-                        {form.checkIn && form.checkOut && nights > 0 && (
-                          <span className="price-nights"> · ₹{(minPrice * nights).toLocaleString()} for {nights} night{nights > 1 ? 's' : ''}</span>
+            <div className="cm-cal-grid">
+              {getDaysInMonth().map((date, idx) => {
+                const blockInfo = getBlockInfo(date);
+                const blocked   = isDateBlocked(date);
+                const today     = isToday(date);
+                return (
+                  <div
+                    key={idx}
+                    className={[
+                      "cm-day",
+                      !date   ? "cm-day--empty"   : "",
+                      blocked ? "cm-day--blocked"  : date ? "cm-day--avail" : "",
+                      today   ? "cm-day--today"    : "",
+                    ].filter(Boolean).join(" ")}
+                  >
+                    {date && (
+                      <>
+                        <span className="cm-day-num">{date.getDate()}</span>
+                        {blocked && blockInfo && (
+                          <div className="cm-day-info">
+                            <span
+                              className="cm-day-badge"
+                              style={{ background: platformColor[blockInfo.source] || "#64748b" }}
+                            >
+                              {blockInfo.source.replace("_", ".")}
+                            </span>
+                            {blockInfo.source === "manual" && (
+                              <button
+                                className="cm-day-unblock"
+                                onClick={() => unblockDate(blockInfo.id)}
+                                title="Unblock"
+                                aria-label="Unblock date"
+                              >
+                                <IconUnblock />
+                              </button>
+                            )}
+                          </div>
                         )}
-                      </span>
-                    );
-                  })()}
-                </div>
-              </div>
-)}
-
-            {/* ── CANCELLATION HINT ── */}
-            <div className="cancel-hint">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              Free cancellation 7+ days before check-in · 50% refund 3–6 days · See{" "}
-              <a href="/cancellation-policy" target="_blank" rel="noopener noreferrer">cancellation policy</a>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            <button onClick={checkAvailability} disabled={loading} className="check-btn">
-              {loading ? <span className="loader">Checking Availability...</span> : "Check Availability"}
-            </button>
+            <div className="cm-legend">
+              <div className="cm-legend-item"><span className="cm-legend-dot cm-legend-dot--avail" />Available</div>
+              <div className="cm-legend-item"><span className="cm-legend-dot cm-legend-dot--blocked" />Blocked</div>
+              <div className="cm-legend-item"><span className="cm-legend-dot cm-legend-dot--today" />Today</div>
+            </div>
 
-            {message && (
-              <div className={`message ${roomSuggestions.length > 0 ? "success" : "error-msg"}`}>
-                {message}
+            <div className="cm-stats">
+              <div className="cm-stat">
+                <span className="cm-stat-num">{getDaysInMonth().filter(d => d && !isDateBlocked(d)).length}</span>
+                <span className="cm-stat-label">Available</span>
               </div>
-            )}
-          </div>
-
-          {/* ── Options panel ── */}
-          <div className="summary-section">
-            <h2>Available Options</h2>
-
-            {roomSuggestions.length === 0 && !message && (
-              <div className="empty-state">
-                <p>Fill in the details and click "Check Availability" to see available rooms</p>
+              <div className="cm-stat-divider" />
+              <div className="cm-stat">
+                <span className="cm-stat-num">{blockedDates.length}</span>
+                <span className="cm-stat-label">Blocked</span>
               </div>
-            )}
+              <div className="cm-stat-divider" />
+              <div className="cm-stat">
+                <span className="cm-stat-num">{calendarSyncs.filter(s => s.sync_enabled).length}</span>
+                <span className="cm-stat-label">Active Syncs</span>
+              </div>
+            </div>
+          </section>
 
-            {roomSuggestions.length > 0 && (
-              <div className="suggestions-list">
-                {roomSuggestions.map((combo, idx) => {
-                  const totalPrice    = combo.reduce((sum, r) => sum + r.pricePerNight, 0);
-                  const totalForStay  = totalPrice * nights;
-                  const isSelected    = selectedRooms.length > 0 &&
-                    selectedRooms.every(sr => combo.some(c => c.roomId === sr.roomId && c.guests === sr.guests));
+          {/* ══ RIGHT – Controls ══ */}
+          <aside className="cm-sidebar">
 
-                  const regularRoomCount = rooms.filter(r => !r.is_hall && r.room_type !== 'hall').length;
-                  const hasHall = combo.some(allocation => {
-                    const room = rooms.find(r => r.id === allocation.roomId);
-                    return room?.is_hall || room?.room_type === 'hall';
-                  });
-                  const isAllRoomsPlusHall = combo.length === regularRoomCount + 1 && hasHall;
+            {/* ── Block a date ── */}
+            <div className="cm-card">
+              <div className="cm-card-head">
+                <div className="cm-card-icon cm-card-icon--red"><IconBan /></div>
+                <h3 className="cm-card-title">Block a Date</h3>
+              </div>
+              <div className="cm-field">
+                <label className="cm-label">Date</label>
+                <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
+                  className="cm-input" min={fmt(new Date())} />
+              </div>
+              <div className="cm-field">
+                <label className="cm-label">Reason <span className="cm-optional">optional</span></label>
+                <input type="text" value={blockReason} onChange={e => setBlockReason(e.target.value)}
+                  placeholder="e.g. Maintenance, Private event…" className="cm-input" />
+              </div>
+              <button onClick={blockSingleDate} disabled={loading} className="cm-btn cm-btn--danger">
+                {loading ? <span className="cm-spinner" /> : <><IconPlus /> Block Date</>}
+              </button>
+            </div>
 
-                  return (
-                    <div key={idx} className={`combo-card ${isSelected ? "selected" : ""}`}
-                      style={{ "--delay": `${Math.min(idx, 5) * 60}ms` } as React.CSSProperties}>
-                      <div className="combo-header">
-                        <div className="combo-title-row">
-                          <strong>Option {idx + 1}</strong>
-                          {isAllRoomsPlusHall && <span className="combo-badge-special">Complete Floor</span>}
-                          {!isAllRoomsPlusHall && combo.length > 1 && (
-                            <span className="combo-badge">{combo.length} Rooms</span>
-                          )}
+            {/* ── iCal Export ── */}
+            <div className="cm-card">
+              <div className="cm-card-head">
+                <div className="cm-card-icon cm-card-icon--blue"><IconUpload /></div>
+                <h3 className="cm-card-title">Export iCal</h3>
+              </div>
+              <p className="cm-hint">Share this URL with Booking.com, Airbnb, or any platform that supports iCal import.</p>
+              <div className="cm-url-box">
+                <code className="cm-url-code">{typeof window !== "undefined" ? generateICalUrl() : "Loading…"}</code>
+                <button onClick={copyICalUrl} className="cm-copy-btn">
+                  <IconCopy /> Copy
+                </button>
+              </div>
+              <div className="cm-guides">
+                <details className="cm-guide">
+                  <summary className="cm-guide-summary">
+                    <span className="cm-guide-dot" style={{ background: "#003580" }} />
+                    Booking.com setup
+                  </summary>
+                  <ol className="cm-guide-steps">
+                    <li>Log in to Booking.com Extranet</li>
+                    <li>Go to Property → Calendar → Import/Export</li>
+                    <li>Click "Import calendar" and paste the URL above</li>
+                    <li>Set sync frequency (recommended: every hour)</li>
+                  </ol>
+                </details>
+                <details className="cm-guide">
+                  <summary className="cm-guide-summary">
+                    <span className="cm-guide-dot" style={{ background: "#FF385C" }} />
+                    Airbnb setup
+                  </summary>
+                  <ol className="cm-guide-steps">
+                    <li>Log in to Airbnb hosting dashboard</li>
+                    <li>Go to Availability → Calendar sync</li>
+                    <li>Click "Import calendar" and paste the URL above</li>
+                    <li>Name your calendar and save</li>
+                  </ol>
+                </details>
+              </div>
+            </div>
+
+            {/* ── Import Calendar ── */}
+            <div className="cm-card">
+              <div className="cm-card-head">
+                <div className="cm-card-icon cm-card-icon--green"><IconDownload /></div>
+                <h3 className="cm-card-title">Import Calendar</h3>
+              </div>
+              <p className="cm-hint">Pull bookings from external platforms to automatically block dates here.</p>
+
+              <div className="cm-field">
+                <label className="cm-label">Platform</label>
+                <div className="cm-select-wrap">
+                  <select value={syncPlatform} onChange={e => setSyncPlatform(e.target.value)} className="cm-select cm-select--light">
+                    <option value="booking_com">Booking.com</option>
+                    <option value="airbnb">Airbnb</option>
+                    <option value="expedia">Expedia</option>
+                    <option value="vrbo">VRBO</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <IconChevronDown />
+                </div>
+              </div>
+              <div className="cm-field">
+                <label className="cm-label">iCal URL</label>
+                <input type="url" value={syncUrl} onChange={e => setSyncUrl(e.target.value)}
+                  placeholder="https://www.airbnb.com/calendar/ical/…" className="cm-input" />
+              </div>
+              <button onClick={addCalendarSync} disabled={loading} className="cm-btn cm-btn--primary">
+                {loading ? <span className="cm-spinner" /> : <><IconSync /> Add Sync</>}
+              </button>
+
+              {calendarSyncs.length > 0 && (
+                <div className="cm-syncs">
+                  <p className="cm-syncs-label">Active connections</p>
+                  {calendarSyncs.map(sync => (
+                    <div key={sync.id} className="cm-sync">
+                      <div className="cm-sync-top">
+                        <div className="cm-sync-platform">
+                          <span className="cm-platform-dot" style={{ background: platformColor[sync.platform] || "#64748b" }} />
+                          <strong>{platformLabel[sync.platform] || sync.platform}</strong>
                         </div>
-                        <div className="combo-price-col">
-                          <span className="combo-price-total">₹{totalForStay.toLocaleString()}</span>
-                          <span className="combo-price-label">for {nights} night{nights > 1 ? 's' : ''}</span>
+                        <div className="cm-sync-actions">
+                          <button
+                            className="cm-copy-btn"
+                            onClick={() => syncNow(sync.id)}
+                            disabled={syncingId === sync.id || !sync.sync_enabled}
+                          >
+                            {syncingId === sync.id ? "Syncing…" : "Sync now"}
+                          </button>
+                          <label className="cm-toggle" aria-label={`Toggle ${platformLabel[sync.platform]} sync`}>
+                            <input type="checkbox" checked={sync.sync_enabled} onChange={() => toggleSync(sync.id, sync.sync_enabled)} />
+                            <span className="cm-toggle-track"><span className="cm-toggle-thumb" /></span>
+                          </label>
+                          <button className="cm-del-btn" onClick={() => deleteSync(sync.id)} title="Delete sync" aria-label="Delete sync">
+                            <IconTrash />
+                          </button>
                         </div>
                       </div>
-
-                      <div className="combo-breakdown">
-                        {combo.map((allocation, i) => {
-                          const room      = rooms.find(r => r.id === allocation.roomId);
-                          const isHall    = room?.is_hall || room?.room_type === 'hall';
-                          const roomImage = room?.images?.[0] || '/placeholder-room.jpg';
-                          const availRoom = availableRooms.find(r => r.id === allocation.roomId);
-                          const hasOverride = availRoom?.effectiveBasePrice !== undefined;
-
-                          return (
-                            <div key={i} className="allocation-row">
-                              <div className="allocation-room-preview">
-                                <div className="allocation-img-wrap">
-                                  <div className="allocation-img-bg"
-                                    style={{ backgroundImage: `url(${roomImage})` }} aria-hidden="true" />
-                                  <Image src={roomImage} alt={allocation.roomName} fill
-                                    sizes="100px" style={{ objectFit: 'contain', zIndex: 1 }} />
-                                </div>
-                                <div className="allocation-info">
-                                  <span className="allocation-name">
-                                    {allocation.roomName}
-                                    {isHall    && <span className="hall-badge">Hall</span>}
-                                    {hasOverride && <span className="override-badge">Special Rate</span>}
-                                  </span>
-                                  <span className="allocation-guests">
-                                    {allocation.guests} guest{allocation.guests > 1 ? 's' : ''}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="allocation-price">
-                                ₹{allocation.pricePerNight.toLocaleString()}/night
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {isAllRoomsPlusHall && (
-                        <div className="combo-highlight">
-                          Entire Floor booked for your exclusive use
+                      <div className="cm-sync-url">{sync.calendar_url}</div>
+                      {sync.last_sync_at && (
+                        <div className="cm-sync-meta">
+                          <span>Last sync {new Date(sync.last_sync_at).toLocaleString()}</span>
+                          <span className={`cm-status-pill cm-status-pill--${sync.last_sync_status}`}>
+                            {sync.last_sync_status}
+                          </span>
                         </div>
                       )}
-
-                      <button className="select-combo-btn" onClick={() => handleSelectRooms(combo)}>
-                        Select & Pay ₹{totalForStay.toLocaleString()}
-                      </button>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Login prompt modal */}
-      {showLoginPrompt && (
-        <div className="modal" onClick={() => setShowLoginPrompt(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Login Required</h3>
-            <p>Please login or create an account to complete your booking</p>
-            <div className="modal-actions">
-              <button onClick={() => router.push("/user/login")}     className="action-btn primary">Login</button>
-              <button onClick={() => router.push("/user/register")}  className="action-btn secondary">Register</button>
-              <button onClick={() => setShowLoginPrompt(false)}      className="action-btn tertiary">Cancel</button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          </aside>
+        </main>
+      </div>
+    </>
+  );
+}
 
-      {/* Success modal */}
-      {showSuccess && (
-        <div className="modal">
-          <div className="modal-content">
-            <div className="success-icon">✓</div>
-            <h3>Booking Confirmed!</h3>
-            <p>Thank you for choosing Sukhakarta Holiday Home</p>
-            {selectedRooms.length > 1 && (
-              <p className="modal-subtext">You've booked {selectedRooms.length} rooms for your stay</p>
-            )}
-            <p className="modal-subtext">Redirecting to your dashboard...</p>
-          </div>
-        </div>
-      )}
+/* ─────────────────────────── Styles ─────────────────────────── */
 
-      <style jsx global>{`
-        .booking-page { min-height: 100vh; color: #f8fafc; font-family: var(--font-outfit), system-ui, sans-serif; position: relative; background: #04070f; overflow-x: hidden; }
+function PageStyles() {
+  return (
+    <style>{`
+      .cm-root {
+        --c-bg:        #f5f3ef;
+        --c-surface:   #ffffff;
+        --c-border:    #e8e3db;
+        --c-ink:       #1c1917;
+        --c-muted:     #78716c;
+        --c-accent:    #c2410c;
+        --c-accent-lt: #fff7ed;
+        --c-avail:     #d1fae5;
+        --c-avail-b:   #6ee7b7;
+        --c-blocked:   #fee2e2;
+        --c-blocked-b: #fca5a5;
+        --c-today:     #fef3c7;
+        --c-today-b:   #f59e0b;
+        --c-blue:      #1d4ed8;
+        --c-blue-lt:   #eff6ff;
+        --c-green:     #15803d;
+        --c-green-lt:  #f0fdf4;
+        --c-shadow:    0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+        --c-shadow-md: 0 4px 24px rgba(0,0,0,.08);
+        --radius:      14px;
+        --radius-sm:   8px;
 
-        /* Static mesh background — the old animated pulsing layer was a
-           full-viewport GPU-composited opacity animation running for 8s
-           right through the LCP/TBT measurement window. Removing the
-           animation (mesh-layer-2) fixes the single biggest performance
-           cost on this page while keeping the same visual look. */
-        .bg-mesh { position: fixed; inset: 0; z-index: 0; pointer-events: none; contain: strict; }
-        .mesh-layer-1 { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 60% at 100% 0%, rgba(249,115,22,0.18) 0%, transparent 60%), radial-gradient(ellipse 70% 50% at 0% 100%, rgba(14,165,233,0.15) 0%, transparent 60%), radial-gradient(ellipse 40% 40% at 50% 50%, rgba(249,115,22,0.06) 0%, transparent 70%), linear-gradient(160deg, #04070f 0%, #0b1220 50%, #04070f 100%); }
-        .grid-overlay { position: absolute; inset: 0; background-image: linear-gradient(rgba(249,115,22,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(249,115,22,0.04) 1px, transparent 1px); background-size: 60px 60px; }
+        min-height: 100vh;
+        background: var(--c-bg);
+        font-family: 'Georgia', 'Times New Roman', serif;
+        color: var(--c-ink);
+      }
 
-        /* No .reveal rules here by design — see the PERF note in the component.
-           Nothing above the fold is allowed to start at opacity 0. */
+      .cm-topbar { background: var(--c-ink); color: #fff; position: sticky; top: 0; z-index: 50; }
+      .cm-topbar-inner {
+        max-width: 1440px; margin: 0 auto; padding: 0 2rem; height: 72px;
+        display: flex; align-items: center; justify-content: space-between; gap: 2rem;
+      }
+      .cm-brand { display: flex; align-items: center; gap: 1rem; }
+      .cm-brand-icon {
+        width: 40px; height: 40px; background: var(--c-accent); border-radius: 10px;
+        display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;
+      }
+      .cm-title { font-size: clamp(1rem, 2.5vw, 1.25rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin: 0; }
+      .cm-subtitle { font-size: 0.75rem; color: #a8a29e; font-family: system-ui, sans-serif; margin: 1px 0 0; }
 
-        .hero { position: relative; z-index: 1; padding: 9rem 1.5rem 4rem; text-align: center; }
-        .hero-badge { display: inline-block; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: #f97316; padding: 0.5rem 1.25rem; border: 1px solid rgba(249,115,22,0.4); border-radius: 100px; margin-bottom: 2rem; background: rgba(249,115,22,0.08); animation: fadeInDown 0.7s ease-out both; }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
-        .hero-title { font-family: var(--font-cormorant), Georgia, serif; font-size: clamp(2.8rem, 7vw, 5rem); font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; margin: 0 0 1.25rem; background: linear-gradient(140deg, #fff 0%, #f4d5b8 50%, #f97316 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: fadeInUp 0.8s ease-out 0.15s both; }
-        .hero-subtitle { font-size: clamp(1rem, 2.5vw, 1.4rem); color: rgba(240,244,248,0.8); margin: 0 0 2rem; font-weight: 300; animation: fadeInUp 0.8s ease-out 0.3s both; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+      .cm-room-picker { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+      .cm-picker-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .08em; color: #a8a29e; font-family: system-ui, sans-serif; }
 
-        .login-notice { margin-top: 1.5rem; padding: 1rem; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); border-radius: 12px; display: inline-block; }
-        .login-notice p { margin: 0; font-size: 1rem; }
-        .login-notice a { color: #60a5fa; text-decoration: none; font-weight: 600; }
-        .login-notice a:hover { color: #93c5fd; }
+      .cm-select-wrap { position: relative; display: inline-flex; align-items: center; width: 100%; }
+      .cm-select {
+        appearance: none; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+        color: #fff; padding: .5rem 2.25rem .5rem .85rem; border-radius: var(--radius-sm);
+        font-size: .9rem; font-family: system-ui, sans-serif; cursor: pointer;
+        transition: border-color .2s; min-width: 200px; width: 100%;
+      }
+      .cm-select:focus { outline: none; border-color: var(--c-accent); }
+      .cm-select option { background: #1c1917; color: #fff; }
+      .cm-select--light { background: var(--c-bg); border-color: var(--c-border); color: var(--c-ink); }
+      .cm-select--light option { background: #fff; color: var(--c-ink); }
+      .cm-select-arrow { position: absolute; right: .6rem; pointer-events: none; color: #a8a29e; }
 
-        .container { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem 5rem; position: relative; z-index: 1; }
-        .booking-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 3rem; }
+      .cm-toast {
+        position: fixed; top: 88px; right: 1.5rem; z-index: 100;
+        display: flex; align-items: center; gap: .6rem;
+        padding: .85rem 1.25rem; border-radius: var(--radius-sm);
+        font-family: system-ui, sans-serif; font-size: .9rem; font-weight: 500;
+        box-shadow: var(--c-shadow-md); animation: cm-slideIn .25s ease;
+        max-width: calc(100vw - 3rem);
+      }
+      .cm-toast--success { background: #052e16; color: #bbf7d0; border: 1px solid #166534; }
+      .cm-toast--error   { background: #450a0a; color: #fecaca; border: 1px solid #991b1b; }
+      .cm-toast-icon { display: flex; align-items: center; flex-shrink: 0; }
+      @keyframes cm-slideIn { from { opacity:0; transform: translateX(16px); } to { opacity:1; transform: translateX(0); } }
 
-        /* ── TRUST BAR ── */
-        .trust-bar {
-          display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center;
-          padding: 0.875rem 1.5rem; margin-bottom: 2rem;
-          background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2);
-          border-radius: 12px; font-size: 0.82rem; color: #94a3b8;
-        }
-        .trust-item { display: inline-flex; align-items: center; gap: 0.4rem; }
-        .trust-item svg { color: #22c55e; flex-shrink: 0; }
-        .trust-item a { color: #22c55e; text-decoration: none; font-weight: 600; }
-        .trust-item a:hover { text-decoration: underline; }
-        .trust-item strong { color: #f8fafc; }
+      .cm-body {
+        max-width: 1440px; margin: 0 auto; padding: 2rem;
+        display: grid; grid-template-columns: 1fr 400px; gap: 2rem; align-items: start;
+      }
 
-        /* backdrop-filter: blur() removed from these two large above-the-fold
-           panels — it forced the browser to recomposite everything behind
-           them on every frame. A solid, slightly-darker background keeps
-           the same "glass panel" look for a fraction of the paint cost. */
-        .form-section, .summary-section { background: rgba(13,18,30,0.88); border: 1px solid rgba(249,115,22,0.2); border-radius: 24px; padding: 2.5rem; }
+      .cm-panel { background: var(--c-surface); border-radius: var(--radius); box-shadow: var(--c-shadow); padding: 2rem; border: 1px solid var(--c-border); }
+      .cm-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 0.75rem; }
+      .cm-panel-title { font-size: 1.4rem; font-weight: 700; color: var(--c-ink); letter-spacing: -.02em; margin: 0; }
 
-        h2 { font-size: 2rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fff, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .form-subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
+      .cm-month-nav { display: flex; align-items: center; gap: .75rem; }
+      .cm-month-label { font-family: system-ui, sans-serif; font-size: .95rem; font-weight: 600; color: var(--c-ink); min-width: 140px; text-align: center; }
+      .cm-nav-btn {
+        width: 34px; height: 34px; border: 1px solid var(--c-border); border-radius: var(--radius-sm);
+        background: var(--c-surface); display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all .15s; color: var(--c-muted); flex-shrink: 0;
+      }
+      .cm-nav-btn:hover { background: var(--c-bg); color: var(--c-ink); border-color: #c5bdb3; }
 
-        .form-group { margin-bottom: 1.5rem; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+      .cm-cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; margin-bottom: .35rem; }
+      .cm-weekday { text-align: center; font-family: system-ui, sans-serif; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--c-muted); padding: .4rem 0; }
+      .cm-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
+      .cm-day { aspect-ratio: 1; border-radius: var(--radius-sm); padding: .35rem; position: relative; display: flex; flex-direction: column; border: 1.5px solid transparent; transition: transform .1s, box-shadow .1s; }
+      .cm-day--empty   { background: transparent !important; }
+      .cm-day--avail   { background: var(--c-avail); border-color: var(--c-avail-b); }
+      .cm-day--avail:hover { transform: scale(1.04); box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+      .cm-day--blocked { background: var(--c-blocked); border-color: var(--c-blocked-b); }
+      .cm-day--today   { background: var(--c-today) !important; border-color: var(--c-today-b) !important; box-shadow: 0 0 0 2px var(--c-today-b); }
+      .cm-day-num { font-family: system-ui, sans-serif; font-size: .8rem; font-weight: 700; color: var(--c-ink); line-height: 1; }
+      .cm-day-info { margin-top: .2rem; display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; }
+      .cm-day-badge { font-size: .55rem; font-family: system-ui, sans-serif; font-weight: 700; color: #fff; padding: .1rem .3rem; border-radius: 3px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+      .cm-day-unblock { display: inline-flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: #dc2626; padding: 0 .1rem; line-height: 1; opacity: .7; transition: opacity .15s; }
+      .cm-day-unblock:hover { opacity: 1; }
 
-        label { display: block; margin-bottom: 0.5rem; color: #cbd5e1; font-weight: 500; font-size: 0.9rem; }
+      .cm-legend { display: flex; gap: 1.25rem; justify-content: center; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--c-border); flex-wrap: wrap; }
+      .cm-legend-item { display: flex; align-items: center; gap: .4rem; font-family: system-ui, sans-serif; font-size: .8rem; color: var(--c-muted); }
+      .cm-legend-dot { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid; flex-shrink: 0; }
+      .cm-legend-dot--avail   { background: var(--c-avail);   border-color: var(--c-avail-b); }
+      .cm-legend-dot--blocked { background: var(--c-blocked); border-color: var(--c-blocked-b); }
+      .cm-legend-dot--today   { background: var(--c-today);   border-color: var(--c-today-b); }
 
-        .input { width: 100%; padding: 1rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(249,115,22,0.3); border-radius: 12px; color: #f8fafc; font-size: 1rem; transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease; font-family: var(--font-outfit), system-ui, sans-serif; }
-        .input:focus { outline: none; border-color: #f97316; background: rgba(255,255,255,0.13); box-shadow: 0 0 0 3px rgba(249,115,22,0.1); }
-        .input.error { border-color: #ef4444; background: rgba(239,68,68,0.08); }
-        .input.error:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
-        .input::placeholder { color: #64748b; }
-        .input:disabled { opacity: 0.5; cursor: not-allowed; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.5); cursor: pointer; }
+      .cm-stats { display: flex; align-items: center; justify-content: center; margin-top: 1.25rem; background: var(--c-bg); border-radius: var(--radius-sm); border: 1px solid var(--c-border); overflow: hidden; }
+      .cm-stat { flex: 1; text-align: center; padding: 1rem; min-width: 0; }
+      .cm-stat-num { display: block; font-size: 1.75rem; font-weight: 800; color: var(--c-ink); letter-spacing: -.03em; font-family: Georgia, serif; }
+      .cm-stat-label { display: block; font-size: .7rem; font-family: system-ui, sans-serif; text-transform: uppercase; letter-spacing: .07em; color: var(--c-muted); margin-top: .2rem; }
+      .cm-stat-divider { width: 1px; background: var(--c-border); align-self: stretch; }
 
-        .error-text { display: block; color: #fca5a5; font-size: 0.85rem; margin-top: 0.5rem; }
+      .cm-sidebar { display: flex; flex-direction: column; gap: 1.25rem; }
 
-        /* ── CANCELLATION HINT ── */
-        .cancel-hint {
-          display: flex; align-items: flex-start; gap: 0.4rem;
-          font-size: 0.8rem; color: #64748b; padding: 0.75rem 1rem;
-          background: rgba(255,255,255,0.03); border-radius: 8px;
-          line-height: 1.5; margin-bottom: 1.5rem;
-        }
-        .cancel-hint svg { color: #f97316; flex-shrink: 0; margin-top: 2px; }
-        .cancel-hint a { color: #f97316; text-decoration: none; }
-        .cancel-hint a:hover { text-decoration: underline; }
+      .cm-card { background: var(--c-surface); border-radius: var(--radius); box-shadow: var(--c-shadow); padding: 1.5rem; border: 1px solid var(--c-border); }
+      .cm-card-head { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; }
+      .cm-card-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .cm-card-icon--red   { background: #fff1f2; color: #dc2626; }
+      .cm-card-icon--blue  { background: #eff6ff; color: #2563eb; }
+      .cm-card-icon--green { background: #f0fdf4; color: #16a34a; }
+      .cm-card-title { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; margin: 0; }
 
-        .check-btn { width: 100%; padding: 1.2rem 2rem; background: linear-gradient(135deg, #f97316, #ea580c); border: none; border-radius: 12px; color: white; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease; box-shadow: 0 10px 30px rgba(249,115,22,0.4); will-change: transform; font-family: var(--font-outfit), system-ui, sans-serif; }
-        .check-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(249,115,22,0.6); }
-        .check-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+      .cm-field { margin-bottom: 1rem; }
+      .cm-label { display: block; font-size: .78rem; font-family: system-ui, sans-serif; font-weight: 600; color: var(--c-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .4rem; }
+      .cm-optional { font-weight: 400; text-transform: none; letter-spacing: 0; }
+      .cm-input { width: 100%; box-sizing: border-box; padding: .65rem .85rem; border: 1.5px solid var(--c-border); border-radius: var(--radius-sm); font-size: .9rem; font-family: system-ui, sans-serif; color: var(--c-ink); background: var(--c-bg); transition: border-color .2s, box-shadow .2s; }
+      .cm-input::placeholder { color: #c4b8ae; }
+      .cm-input:focus { outline: none; border-color: var(--c-accent); box-shadow: 0 0 0 3px rgba(194,65,12,.1); }
+      .cm-hint { font-size: .82rem; font-family: system-ui, sans-serif; color: var(--c-muted); line-height: 1.5; margin-bottom: 1rem; }
 
-        .loader { animation: pulse 1.5s ease-in-out infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+      .cm-btn { width: 100%; padding: .75rem; border: none; border-radius: var(--radius-sm); font-size: .9rem; font-family: system-ui, sans-serif; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .5rem; transition: all .2s; letter-spacing: .01em; }
+      .cm-btn:disabled { opacity: .5; cursor: not-allowed; }
+      .cm-btn--primary { background: var(--c-ink); color: #fff; }
+      .cm-btn--primary:hover:not(:disabled) { background: #292524; }
+      .cm-btn--danger  { background: var(--c-accent); color: #fff; }
+      .cm-btn--danger:hover:not(:disabled)  { background: #9a3412; }
 
-        .message { margin-top: 1.5rem; padding: 1rem; border-radius: 12px; text-align: center; font-weight: 500; }
-        .message.error-msg { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #fca5a5; }
-        .message.success   { background: rgba(34,197,94,0.15);  border: 1px solid rgba(34,197,94,0.4);  color: #86efac; }
+      .cm-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: cm-spin .7s linear infinite; }
+      @keyframes cm-spin { to { transform: rotate(360deg); } }
 
-        .empty-state { text-align: center; padding: 4rem 2rem; color: #94a3b8; }
+      .cm-url-box { display: flex; gap: .5rem; align-items: center; background: var(--c-bg); border: 1.5px solid var(--c-border); border-radius: var(--radius-sm); padding: .65rem .85rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+      .cm-url-code { flex: 1; font-size: .75rem; color: var(--c-muted); word-break: break-all; font-family: 'Courier New', monospace; min-width: 0; }
+      .cm-copy-btn { display: flex; align-items: center; gap: .35rem; background: var(--c-ink); color: #fff; border: none; border-radius: 6px; padding: .4rem .75rem; font-size: .78rem; font-family: system-ui, sans-serif; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .2s; flex-shrink: 0; }
+      .cm-copy-btn:hover:not(:disabled) { background: #292524; }
+      .cm-copy-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-        .suggestions-list { display: flex; flex-direction: column; gap: 1rem; }
+      .cm-guides { display: flex; flex-direction: column; gap: .5rem; }
+      .cm-guide { border: 1px solid var(--c-border); border-radius: var(--radius-sm); overflow: hidden; }
+      .cm-guide-summary { cursor: pointer; padding: .65rem .85rem; font-size: .85rem; font-family: system-ui, sans-serif; font-weight: 600; color: var(--c-ink); display: flex; align-items: center; gap: .5rem; list-style: none; user-select: none; background: var(--c-bg); }
+      .cm-guide-summary::-webkit-details-marker { display: none; }
+      .cm-guide[open] .cm-guide-summary { border-bottom: 1px solid var(--c-border); }
+      .cm-guide-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+      .cm-guide-steps { padding: .85rem .85rem .85rem 1.75rem; color: var(--c-muted); font-size: .82rem; font-family: system-ui, sans-serif; line-height: 1.7; }
+      .cm-guide-steps li { margin-bottom: .2rem; }
 
-        /* Entrance animation for the availability cards. These are only ever
-           rendered after the visitor clicks "Check Availability", so unlike the
-           old scroll-reveal it cannot delay first paint or LCP. */
-        .combo-card { background: rgba(255,255,255,0.04); border: 2px solid rgba(249,115,22,0.2); border-radius: 16px; padding: 1.25rem; transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), border-color 0.2s ease, box-shadow 0.3s ease; cursor: pointer; animation: comboIn 0.45s cubic-bezier(0.22,1,0.36,1) var(--delay,0ms) both; }
-        @keyframes comboIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        @media (prefers-reduced-motion: reduce) { .combo-card { animation: none; } }
-        .combo-card:hover { transform: translateY(-4px); border-color: rgba(249,115,22,0.5); box-shadow: 0 10px 30px rgba(249,115,22,0.2); }
-        .combo-card.selected { border-color: #f97316; background: rgba(249,115,22,0.08); box-shadow: 0 12px 35px rgba(249,115,22,0.3); }
+      .cm-syncs { margin-top: 1.25rem; }
+      .cm-syncs-label { font-size: .7rem; font-family: system-ui, sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--c-muted); font-weight: 700; margin-bottom: .75rem; }
+      .cm-sync { background: var(--c-bg); border: 1.5px solid var(--c-border); border-radius: var(--radius-sm); padding: .9rem; margin-bottom: .6rem; }
+      .cm-sync-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; gap: .5rem; flex-wrap: wrap; }
+      .cm-sync-platform { display: flex; align-items: center; gap: .45rem; }
+      .cm-platform-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+      .cm-sync-platform strong { font-size: .88rem; font-family: system-ui, sans-serif; }
+      .cm-sync-actions { display: flex; align-items: center; gap: .6rem; }
+      .cm-sync-url { font-size: .72rem; color: var(--c-muted); font-family: 'Courier New', monospace; word-break: break-all; margin-bottom: .4rem; }
+      .cm-sync-meta { display: flex; align-items: center; gap: .5rem; font-size: .75rem; color: var(--c-muted); font-family: system-ui, sans-serif; flex-wrap: wrap; }
+      .cm-status-pill { font-size: .68rem; font-weight: 700; padding: .1rem .45rem; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; font-family: system-ui, sans-serif; }
+      .cm-status-pill--success { background: #dcfce7; color: #166534; }
+      .cm-status-pill--failed  { background: #fee2e2; color: #991b1b; }
+      .cm-status-pill--partial { background: #fef9c3; color: #854d0e; }
 
-        .combo-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 1rem; }
-        .combo-title-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-        .combo-title-row strong { color: #f8fafc; font-size: 1.1rem; }
-        .combo-badge { padding: 0.25rem 0.75rem; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); border-radius: 100px; font-size: 0.75rem; color: #60a5fa; font-weight: 600; }
-        .combo-badge-special { padding: 0.25rem 0.75rem; background: linear-gradient(135deg, rgba(249,115,22,0.2), rgba(234,88,12,0.2)); border: 1px solid rgba(249,115,22,0.5); border-radius: 100px; font-size: 0.75rem; color: #f97316; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-        .combo-price-col { text-align: right; flex-shrink: 0; }
-        .combo-price-total { display: block; font-size: 1.75rem; font-weight: 700; color: #f97316; line-height: 1; }
-        .combo-price-label { display: block; font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
+      .cm-toggle { position: relative; display: inline-block; cursor: pointer; }
+      .cm-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+      .cm-toggle-track { display: block; width: 40px; height: 22px; background: #d1c5bb; border-radius: 11px; transition: background .25s; position: relative; }
+      .cm-toggle input:checked ~ .cm-toggle-track { background: #16a34a; }
+      .cm-toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .25s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+      .cm-toggle input:checked ~ .cm-toggle-track .cm-toggle-thumb { transform: translateX(18px); }
 
-        .combo-breakdown { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.875rem; margin-bottom: 1rem; }
-        .allocation-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .allocation-row:last-child { border-bottom: none; }
-        .allocation-room-preview { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
-        .allocation-img-wrap { position: relative; width: 80px; height: 60px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #04070f; border: 1px solid rgba(249,115,22,0.2); }
-        /* Filter blur() replaced with a plain darkened/scaled background —
-           this block only renders after "Check Availability" (not on the
-           initial LCP path) but the filter was still a needless paint cost
-           for something small enough that blur added no real visual value. */
-        .allocation-img-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; background-color: rgba(4,7,15,0.55); background-blend-mode: darken; opacity: 0.7; transform: scale(1.1); }
-        .allocation-info { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; min-width: 0; }
-        .allocation-name { color: #f8fafc; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-        .allocation-guests { color: #94a3b8; font-size: 0.8rem; }
-        .allocation-price { color: #f97316; font-weight: 600; font-size: 0.9rem; flex-shrink: 0; }
+      .cm-del-btn { width: 28px; height: 28px; border: 1.5px solid #fca5a5; border-radius: 6px; background: #fff1f2; color: #dc2626; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; }
+      .cm-del-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
 
-        .hall-badge { display: inline-block; padding: 0.15rem 0.5rem; background: linear-gradient(135deg, #f97316, #ea580c); color: white; font-size: 0.65rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .override-badge { display: inline-block; padding: 0.15rem 0.5rem; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.35); color: #22c55e; font-size: 0.65rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
-
-        .combo-highlight { background: linear-gradient(135deg, rgba(249,115,22,0.1), rgba(234,88,12,0.1)); border: 1px solid rgba(249,115,22,0.3); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; text-align: center; color: #f97316; font-size: 0.85rem; font-weight: 600; }
-
-        .select-combo-btn { width: 100%; padding: 1rem 1.5rem; background: linear-gradient(135deg, #f97316, #ea580c); border: none; border-radius: 10px; color: white; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease; font-family: inherit; box-shadow: 0 6px 20px rgba(249,115,22,0.35); }
-        .select-combo-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(249,115,22,0.5); }
-
-        .modal { position: fixed; inset: 0; background: rgba(4,7,15,0.97); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 2rem; animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .modal-content { background: linear-gradient(135deg, rgba(30,41,59,0.99), rgba(15,23,42,0.99)); border: 2px solid rgba(249,115,22,0.3); border-radius: 24px; padding: 3rem; text-align: center; max-width: 500px; width: 100%; animation: scaleIn 0.4s cubic-bezier(0.22,1,0.36,1); }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-
-        .success-icon { width: 80px; height: 80px; margin: 0 auto 1.5rem; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: white; animation: bounce 0.6s cubic-bezier(0.22,1,0.36,1); }
-        @keyframes bounce { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-        .modal-content h3 { margin-bottom: 0.5rem; color: #22c55e; font-size: 2rem; }
-        .modal-content p  { color: #cbd5e1; margin-bottom: 0.5rem; }
-        .modal-subtext    { color: #94a3b8; font-size: 0.9rem; }
-
-        .modal-actions { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
-        .action-btn { padding: 1rem 2rem; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: transform 0.25s cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease; will-change: transform; font-family: var(--font-outfit), system-ui, sans-serif; }
-        .action-btn:hover { transform: translateY(-2px); }
-        .action-btn.primary   { background: linear-gradient(135deg, #f97316, #ea580c); color: white; border: none; box-shadow: 0 8px 24px rgba(249,115,22,0.35); }
-        .action-btn.primary:hover { box-shadow: 0 12px 32px rgba(249,115,22,0.5); }
-        .action-btn.secondary { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-        .action-btn.tertiary  { background: transparent; color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
-
-        @media (max-width: 968px) { .booking-grid { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
-        @media (max-width: 768px) {
-          .hero { padding: 6rem 1rem 3rem; }
-          .container { padding: 0 1rem 4rem; }
-          .form-section, .summary-section { padding: 1.5rem; }
-          .combo-header { flex-direction: column; align-items: flex-start; }
-          .combo-price-col { text-align: left; }
-          .allocation-img-wrap { width: 70px; height: 52px; }
-          .allocation-row { padding: 0.65rem 0; }
-          .trust-bar { gap: 1rem; padding: 0.75rem 1rem; font-size: 0.78rem; }
-        }
-        @media (max-width: 480px) {
-          .allocation-img-wrap { width: 60px; height: 45px; }
-          .allocation-name { font-size: 0.85rem; }
-          .allocation-guests { font-size: 0.75rem; }
-          .allocation-price { font-size: 0.85rem; }
-          .combo-breakdown { padding: 0.65rem; }
-          .trust-bar { flex-direction: column; align-items: flex-start; gap: 0.65rem; }
-        }
-        .price-preview-section {
-            padding: 1rem; background: rgba(249,115,22,0.06);
-            border: 1px solid rgba(249,115,22,0.2); border-radius: 12px;
-            margin-bottom: 1.25rem;
-          }
-          .price-preview-label { font-size: 0.78rem; color: #64748b; margin: 0 0 0.3rem; }
-          .price-from { font-size: 1rem; color: #f8fafc; }
-          .price-from strong { color: #f97316; font-size: 1.25rem; }
-          .price-nights { font-size: 0.85rem; color: #94a3b8; }
-      `}</style>
-    </div>
+      @media (max-width: 1100px) {
+        .cm-body { grid-template-columns: 1fr; }
+        .cm-sidebar { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+      }
+      @media (max-width: 640px) {
+        .cm-topbar-inner { flex-direction: column; height: auto; padding: 1rem; gap: .75rem; align-items: flex-start; }
+        .cm-room-picker { width: 100%; }
+        .cm-select { min-width: unset; width: 100%; }
+        .cm-body { padding: 1rem; gap: 1rem; }
+        .cm-panel { padding: 1.25rem; }
+        .cm-card  { padding: 1.25rem; }
+        .cm-sidebar { grid-template-columns: 1fr; }
+        .cm-toast { top: auto; bottom: 1rem; right: 1rem; left: 1rem; }
+        .cm-stat-num { font-size: 1.4rem; }
+        .cm-month-label { min-width: 110px; font-size: .85rem; }
+      }
+      @media (max-width: 420px) {
+        .cm-cal-grid { gap: .2rem; }
+        .cm-cal-weekdays { gap: .2rem; }
+        .cm-day { padding: .2rem; }
+        .cm-day-num { font-size: .7rem; }
+        .cm-day-badge { display: none; }
+      }
+    `}</style>
   );
 }
