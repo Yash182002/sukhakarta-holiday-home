@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
       while (cur < endDate) {
         upsertRows.push({
           room_id: roomId,
-          blocked_date: cur.toISOString().split("T")[0],
+          blocked_date: const y = cur.getUTCFullYear(), m = String(cur.getUTCMonth()+1).padStart(2,"0"), d = String(cur.getUTCDate()).padStart(2,"0"); blocked_date: `${y}-${m}-${d}`,
           reason: event.summary || "External booking",
           source: syncConfig.platform,
           external_booking_id: event.uid,
