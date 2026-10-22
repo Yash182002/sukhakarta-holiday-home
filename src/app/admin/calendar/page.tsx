@@ -177,6 +177,7 @@ export default function RoomCalendarManager() {
   const [syncUrl, setSyncUrl]         = useState("");
 
   const [loading, setLoading]   = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [message, setMessage]   = useState({ type: "", text: "" });
 
   useEffect(() => { loadRooms(); }, []);
@@ -237,9 +238,9 @@ export default function RoomCalendarManager() {
     if (!syncUrl) { setMessage({ type: "error", text: "Please enter calendar URL" }); return; }
     setLoading(true);
 
-    // ── FIX: upsert instead of insert so re-submitting the same
-    //    room+platform updates the URL rather than hitting the
-    //    unique constraint "external_calendar_sync_room_id_platform_key"
+    // Upsert instead of insert so re-submitting the same room+platform
+    // updates the URL rather than hitting the unique constraint
+    // "external_calendar_sync_room_id_platform_key"
     const { error } = await supabase.from("external_calendar_sync").upsert(
       { room_id: selectedRoom, platform: syncPlatform, calendar_url: syncUrl, sync_enabled: true },
       { onConflict: "room_id,platform" }
@@ -264,6 +265,36 @@ export default function RoomCalendarManager() {
     if (!confirm("Delete this calendar sync?")) return;
     const { error } = await supabase.from("external_calendar_sync").delete().eq("id", syncId);
     if (!error) { setMessage({ type: "success", text: "Sync deleted" }); loadCalendarSyncs(); }
+  };
+
+  const syncNow = async (syncId: string) => {
+    setSyncingId(syncId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setMessage({ type: "error", text: "Session expired. Please log in again." });
+        return;
+      }
+      const res = await fetch("/api/admin/sync-now", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ roomId: selectedRoom, syncId }),
+      });
+      const d = await res.json().catch(() => ({}));
+      setMessage({
+        type: res.ok ? "success" : "error",
+        text: res.ok ? `Blocked ${d.datesBlocked} dates` : d.error || "Sync failed",
+      });
+    } catch {
+      setMessage({ type: "error", text: "Network error while syncing" });
+    } finally {
+      setSyncingId(null);
+      loadCalendarSyncs();
+      loadBlockedDates();
+    }
   };
 
   const generateICalUrl = () => `${window.location.origin}/api/ical/${selectedRoom}`;
@@ -553,6 +584,13 @@ export default function RoomCalendarManager() {
                           <strong>{platformLabel[sync.platform] || sync.platform}</strong>
                         </div>
                         <div className="cm-sync-actions">
+                          <button
+                            className="cm-copy-btn"
+                            onClick={() => syncNow(sync.id)}
+                            disabled={syncingId === sync.id || !sync.sync_enabled}
+                          >
+                            {syncingId === sync.id ? "Syncing…" : "Sync now"}
+                          </button>
                           <label className="cm-toggle" aria-label={`Toggle ${platformLabel[sync.platform]} sync`}>
                             <input type="checkbox" checked={sync.sync_enabled} onChange={() => toggleSync(sync.id, sync.sync_enabled)} />
                             <span className="cm-toggle-track"><span className="cm-toggle-thumb" /></span>
@@ -736,7 +774,8 @@ function PageStyles() {
       .cm-url-box { display: flex; gap: .5rem; align-items: center; background: var(--c-bg); border: 1.5px solid var(--c-border); border-radius: var(--radius-sm); padding: .65rem .85rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
       .cm-url-code { flex: 1; font-size: .75rem; color: var(--c-muted); word-break: break-all; font-family: 'Courier New', monospace; min-width: 0; }
       .cm-copy-btn { display: flex; align-items: center; gap: .35rem; background: var(--c-ink); color: #fff; border: none; border-radius: 6px; padding: .4rem .75rem; font-size: .78rem; font-family: system-ui, sans-serif; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .2s; flex-shrink: 0; }
-      .cm-copy-btn:hover { background: #292524; }
+      .cm-copy-btn:hover:not(:disabled) { background: #292524; }
+      .cm-copy-btn:disabled { opacity: .5; cursor: not-allowed; }
 
       .cm-guides { display: flex; flex-direction: column; gap: .5rem; }
       .cm-guide { border: 1px solid var(--c-border); border-radius: var(--radius-sm); overflow: hidden; }
@@ -750,7 +789,7 @@ function PageStyles() {
       .cm-syncs { margin-top: 1.25rem; }
       .cm-syncs-label { font-size: .7rem; font-family: system-ui, sans-serif; text-transform: uppercase; letter-spacing: .08em; color: var(--c-muted); font-weight: 700; margin-bottom: .75rem; }
       .cm-sync { background: var(--c-bg); border: 1.5px solid var(--c-border); border-radius: var(--radius-sm); padding: .9rem; margin-bottom: .6rem; }
-      .cm-sync-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+      .cm-sync-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; gap: .5rem; flex-wrap: wrap; }
       .cm-sync-platform { display: flex; align-items: center; gap: .45rem; }
       .cm-platform-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
       .cm-sync-platform strong { font-size: .88rem; font-family: system-ui, sans-serif; }
