@@ -29,6 +29,12 @@ const ALLOWED_CALENDAR_HOSTS = new Set([
   "outlook.live.com",
   "outlook.office365.com",
   "calendar.proton.me",
+  "admin.booking.com", 
+  "airbnb.co.in", 
+  "www.airbnb.co.in",
+  "www.vrbo.com", 
+  "calendar.expedia.com", 
+  "www.expedia.com",
 ]);
 
 function isAllowedCalendarUrl(urlString: string): boolean {
