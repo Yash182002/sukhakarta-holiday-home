@@ -17,6 +17,11 @@ function getSupabase(): SupabaseClient {
   return _supabase;
 }
 
+const expected = process.env.CRON_SECRET;
+const ok = expected && (request.headers.get("x-cron-secret") === expected ||
+  request.headers.get("authorization") === `Bearer ${expected}`);
+if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
 /* ── SSRF guard: only allow known calendar hostnames ── */
 const ALLOWED_CALENDAR_HOSTS = new Set([
   "calendar.google.com",
