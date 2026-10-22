@@ -9,10 +9,7 @@ export function proxy(request: NextRequest) {
     const expected = process.env.INTERNAL_API_SECRET || "";
 
     if (!expected || provided !== expected) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 
@@ -25,10 +22,7 @@ export function proxy(request: NextRequest) {
         request.headers.get("authorization") === `Bearer ${expected}`);
 
     if (!ok) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
 
@@ -38,14 +32,8 @@ export function proxy(request: NextRequest) {
   // 4. Security headers
   res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("X-Content-Type-Options", "nosniff");
-  res.headers.set(
-    "Referrer-Policy",
-    "strict-origin-when-cross-origin"
-  );
-  res.headers.set(
-    "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
-  );
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   res.headers.set(
     "Strict-Transport-Security",
     "max-age=63072000; includeSubDomains; preload"
