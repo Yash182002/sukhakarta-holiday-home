@@ -18,24 +18,14 @@ export function proxy(request: NextRequest) {
   }
 
   // 2. Protect calendar sync cron endpoint
-  if (
-    pathname === "/api/sync-calendar" &&
-    request.method === "GET"
-  ) {
-    const expected = process.env.CRON_SECRET;
-    const bearer = request.headers.get("authorization");
-
-    const ok =
-      !!expected &&
-      (request.headers.get("x-cron-secret") === expected ||
-        bearer === `Bearer ${expected}`);
-
-    if (!ok) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+  if (pathname === "/api/sync-calendar") {
+  const expected = process.env.CRON_SECRET;
+  const ok =
+    expected &&
+    (request.headers.get("x-cron-secret") === expected ||
+      request.headers.get("authorization") === `Bearer ${expected}`);
+  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
   }
 
   // 3. Continue request
