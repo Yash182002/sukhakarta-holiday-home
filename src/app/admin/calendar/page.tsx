@@ -162,6 +162,10 @@ function IconTrash() {
   );
 }
 
+/* Local-time YYYY-MM-DD (toISOString() shifts dates back a day in IST) */
+const fmt = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 /* ─────────────────────────── Component ─────────────────────────── */
 
 export default function RoomCalendarManager() {
@@ -204,8 +208,8 @@ export default function RoomCalendarManager() {
     const endDate   = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     const { data } = await supabase.from("room_blocked_dates").select("*")
       .eq("room_id", selectedRoom)
-      .gte("blocked_date", startDate.toISOString().split("T")[0])
-      .lte("blocked_date", endDate.toISOString().split("T")[0])
+      .gte("blocked_date", fmt(startDate))
+      .lte("blocked_date", fmt(endDate))
       .order("blocked_date");
     if (data) setBlockedDates(data);
   };
@@ -314,13 +318,13 @@ export default function RoomCalendarManager() {
 
   const isDateBlocked = (date: Date | null) => {
     if (!date) return false;
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = fmt(date);
     return blockedDates.some(bd => bd.blocked_date === dateStr);
   };
 
   const getBlockInfo = (date: Date | null) => {
     if (!date) return null;
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = fmt(date);
     return blockedDates.find(bd => bd.blocked_date === dateStr);
   };
 
@@ -490,7 +494,7 @@ export default function RoomCalendarManager() {
               <div className="cm-field">
                 <label className="cm-label">Date</label>
                 <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
-                  className="cm-input" min={new Date().toISOString().split("T")[0]} />
+                  className="cm-input" min={fmt(new Date())} />
               </div>
               <div className="cm-field">
                 <label className="cm-label">Reason <span className="cm-optional">optional</span></label>
