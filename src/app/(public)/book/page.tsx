@@ -303,7 +303,39 @@ export default function BookingPage() {
         .from("user_profiles")
         .select("full_name, phone")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
+
+      // Look for the phone in every place it could live: the profile row,
+      // auth metadata, then the auth account's own phone field. Each is
+      // normalized (strips +91 / leading 0 / spaces) and only accepted if it
+      // is a valid 10-digit mobile number.
+      const pickValidPhone = (...candidates: unknown[]) => {
+        for (const c of candidates) {
+          if (typeof c !== "string" || !c) continue;
+          const n = normalizePhone(c);
+          if (n.length === 10 && /^[6-9]/.test(n)) return n;
+        }
+        return "";
+      };
+
+      let phone = pickValidPhone(
+        profile?.phone,
+        user.user_metadata?.phone,
+        user.phone
+      );
+
+      // Still nothing? Reuse the number from this customer's latest booking.
+      if (!phone) {
+        const { data: lastBooking } = await supabase
+          .from("bookings")
+          .select("phone")
+          .eq("user_id", user.id)
+          .not("phone", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        phone = pickValidPhone(lastBooking?.phone);
+      }
 
       if (cancelled) return;
 
@@ -311,7 +343,7 @@ export default function BookingPage() {
         ...p,
         name:  p.name  || profile?.full_name || (user.user_metadata?.full_name as string) || "",
         email: p.email || user.email || "",
-        phone: p.phone || profile?.phone || (user.user_metadata?.phone as string) || "",
+        phone: p.phone || phone,
       }));
     })();
 
@@ -575,6 +607,21 @@ export default function BookingPage() {
 
       const bookingResults = await Promise.all(bookingPromises);
       const bookingIds = bookingResults.map(b => b.data!.id);
+
+      // Remember the phone on the customer's profile so they never have to
+      // type it again. Best-effort: a failure here must not block payment.
+      supabase
+        .from("user_profiles")
+        .upsert(
+          {
+            id:        user!.id,
+            email:     user!.email ?? form.email.trim(),
+            full_name: form.name.trim(),
+            phone:     normalizePhone(form.phone),
+          },
+          { onConflict: "id" }
+        )
+        .then(({ error }) => { if (error) console.warn("Could not save phone to profile:", error.message); });
 
       const res   = await fetch("/api/create-order", {
         method: "POST",
