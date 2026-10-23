@@ -34,10 +34,23 @@ export default function UserRegisterPage() {
       return;
     }
 
+    // Clean the number down to the bare 10-digit mobile number before saving
+    // (handles "+91 98765 43210", "09876543210", spaces, dashes, etc.)
+    let phone = formData.phone.replace(/\D/g, "");
+    if (phone.length === 12 && phone.startsWith("91")) phone = phone.slice(2);
+    else if (phone.length === 11 && phone.startsWith("0")) phone = phone.slice(1);
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setError("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Step 1: Sign up the user with full_name in metadata
+      // Sign up the user. full_name and phone go into the auth metadata, which
+      // is stored even when email confirmation is required (no session yet).
+      // The on_auth_user_created database trigger copies them into
+      // user_profiles, so the profile no longer depends on a browser session.
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -45,6 +58,7 @@ export default function UserRegisterPage() {
           emailRedirectTo: "https://sukhakartaholidayhome.in/user/login",
           data: {
             full_name: formData.name,
+            phone,
           },
         },
       });
@@ -53,15 +67,18 @@ export default function UserRegisterPage() {
 
       const userId = data?.user?.id;
 
-      if (userId) {
-        // Step 2: Upsert full_name and phone into user_profiles
+      // Best-effort only. With email confirmation on there is no session yet,
+      // so this is normally blocked by row-level security — the database
+      // trigger above is what actually saves the profile. If a session does
+      // exist, this simply keeps the profile in sync.
+      if (userId && data?.session) {
         const { error: profileError } = await supabase
           .from("user_profiles")
           .upsert({
             id: userId,
             email: formData.email,
             full_name: formData.name,
-            phone: formData.phone,
+            phone,
           });
 
         if (profileError) {
@@ -147,6 +164,7 @@ export default function UserRegisterPage() {
                   placeholder="Enter your Mobile number"
                   required
                   disabled={loading}
+                  autoComplete="tel"
                 />
               </div>
 
