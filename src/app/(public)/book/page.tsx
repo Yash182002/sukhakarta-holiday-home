@@ -78,23 +78,30 @@ type RoomAllocation = {
 };
 
 type BookingDate = {
+  room_id: string | null;
   check_in: string;
   check_out: string;
 };
 
 /* ─────────────────────────── HELPERS ─────────────────────────── */
 
-function getBlockedDates(bookings: BookingDate[]) {
-  const dates: string[] = [];
+// Marker used when a blocked-date row has no room_id, meaning the whole
+// property is closed for that night (every room is unavailable).
+const ALL_ROOMS = "*";
+
+// Records, per night, WHICH rooms are unavailable. A single booking or block
+// on one room must NOT make the date unavailable for the whole property —
+// only the rooms that are actually taken are recorded here.
+function addBookingDates(bookings: BookingDate[], map: Record<string, Set<string>>) {
   bookings.forEach(b => {
-    let d = new Date(b.check_in);
+    const d = new Date(b.check_in);
     const end = new Date(b.check_out);
     while (d < end) {
-      dates.push(d.toISOString().split("T")[0]);
+      const key = d.toISOString().split("T")[0];
+      (map[key] ??= new Set()).add(b.room_id ?? ALL_ROOMS);
       d.setDate(d.getDate() + 1);
     }
   });
-  return dates;
 }
 
 function getRoomPrice(room: Room, guestCount: number): number {
@@ -263,7 +270,11 @@ export default function BookingPage() {
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [selectedRooms, setSelectedRooms] = useState<RoomAllocation[]>([]);
   const [roomSuggestions, setRoomSuggestions] = useState<RoomAllocation[][]>([]);
-  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+
+  // night (YYYY-MM-DD) -> ids of rooms that are booked/blocked that night.
+  // ALL_ROOMS ("*") means the whole property is closed that night.
+  const [dateRoomMap, setDateRoomMap] = useState<Record<string, string[]>>({});
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
@@ -367,24 +378,46 @@ export default function BookingPage() {
     return () => { mounted = false; };
   }, []);
 
+  // Load which rooms are taken on which nights (instead of one global list of
+  // "blocked" dates). A booking or block on a single room only marks THAT room
+  // as unavailable for the night.
   useEffect(() => {
     let mounted = true;
     const loadBlockedDates = async () => {
       try {
         const [bookingsResult, blockedResult] = await Promise.all([
-          supabase.from("bookings").select("check_in, check_out").eq("status", "confirmed"),
-         supabase.from("room_blocked_dates").select("blocked_date"),
+          supabase.from("bookings").select("room_id, check_in, check_out").eq("status", "confirmed"),
+          supabase.from("room_blocked_dates").select("room_id, blocked_date"),
         ]);
         if (!mounted) return;
-        const dates = new Set<string>();
-        if (bookingsResult.data) getBlockedDates(bookingsResult.data).forEach(d => dates.add(d));
-        if (blockedResult.data) blockedResult.data.forEach(d => dates.add(d.blocked_date));
-        setBlockedDates(Array.from(dates));
+
+        const map: Record<string, Set<string>> = {};
+        if (bookingsResult.data) addBookingDates(bookingsResult.data, map);
+        if (blockedResult.data) {
+          blockedResult.data.forEach(b => {
+            (map[b.blocked_date] ??= new Set()).add(b.room_id ?? ALL_ROOMS);
+          });
+        }
+
+        const plain: Record<string, string[]> = {};
+        Object.entries(map).forEach(([date, set]) => { plain[date] = Array.from(set); });
+        setDateRoomMap(plain);
       } catch (error) { console.error("Error loading blocked dates:", error); }
     };
     loadBlockedDates();
     return () => { mounted = false; };
   }, []);
+
+  // A date is only "not available" when EVERY room is unavailable on it
+  // (or the whole property was blocked). If at least one room is free, the
+  // date stays selectable and "Check Availability" shows the free rooms.
+  const blockedDates = useMemo(() => {
+    if (rooms.length === 0) return [] as string[];
+    const allIds = rooms.map(r => r.id);
+    return Object.entries(dateRoomMap)
+      .filter(([, ids]) => ids.includes(ALL_ROOMS) || allIds.every(id => ids.includes(id)))
+      .map(([date]) => date);
+  }, [dateRoomMap, rooms]);
 
   const nights = useMemo(() => {
     if (!form.checkIn || !form.checkOut) return 0;
@@ -445,12 +478,16 @@ export default function BookingPage() {
           supabase.from("room_blocked_dates").select("room_id")
             .gte("blocked_date", form.checkIn).lt("blocked_date", form.checkOut),
         ]);
-        
-        const unavailable = new Set([
+
+        const unavailable = new Set<string | null>([
           ...(bookings ?? []).map(b => b.room_id),
           ...(blocks ?? []).map(b => b.room_id),
         ]);
-        const freeRooms = rooms.filter(r => !unavailable.has(r.id));
+
+        // A block row with no room_id closes the whole property.
+        const freeRooms = unavailable.has(null)
+          ? []
+          : rooms.filter(r => !unavailable.has(r.id));
 
       if (freeRooms.length === 0) {
         setMessage("No rooms available for selected dates.");
@@ -613,6 +650,8 @@ export default function BookingPage() {
     }
   }, [form, user, nights, router]);
 
+  // NOTE: validateCheckIn reads `blockedDates`, so these handlers must list it
+  // as a dependency — otherwise they keep using the empty list from first render.
   const handleNameChange     = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { const v = e.target.value; setForm(p => ({ ...p, name: v })); setErrors(p => ({ ...p, name: validateName(v) })); }, []);
   const handleEmailChange    = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { const v = e.target.value; setForm(p => ({ ...p, email: v })); setErrors(p => ({ ...p, email: validateEmail(v) })); }, []);
   const handlePhoneChange    = useCallback((e: React.ChangeEvent<HTMLInputElement>) => { const v = e.target.value.replace(/\D/g, "").slice(0, 10); setForm(p => ({ ...p, phone: v })); setErrors(p => ({ ...p, phone: validatePhone(v) })); }, []);
